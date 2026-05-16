@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none">
+  <circle cx="90" cy="120" r="34" stroke="#000" stroke-width="2"/>
+  <circle cx="90" cy="108" r="12" fill="#000"/>
+  <path d="M68 146c4-12 14-18 22-18s18 6 22 18" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="230" cy="120" r="34" stroke="#000" stroke-width="2"/>
+  <circle cx="230" cy="108" r="12" fill="#000"/>
+  <path d="M208 146c4-12 14-18 22-18s18 6 22 18" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+  <path d="M134 120h52" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M178 110l10 10-10 10" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="142" y="68" width="36" height="24" rx="6" fill="#A4F133" stroke="#000" stroke-width="2"/>
+  <text x="160" y="85" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="12" fill="#000">Rs</text>
+</svg>
