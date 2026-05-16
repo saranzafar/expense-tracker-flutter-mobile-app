@@ -62,13 +62,31 @@ dev_dependencies:
   riverpod_generator: ^2.4.0
   custom_lint: ^0.6.4
   riverpod_lint: ^2.3.10
-
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
   flutter_lints: ^6.0.0
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/branding/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/branding/app_icon_foreground.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#000000"
+  image: "assets/branding/splash_logo_light.png"
+  image_dark: "assets/branding/splash_logo_dark.png"
+  android: true
+  ios: false
+  fullscreen: false
+  android_12:
+    image: "assets/branding/splash_logo_light.png"
+    image_dark: "assets/branding/splash_logo_dark.png"
+    icon_background_color: "#FFFFFF"
+    icon_background_color_dark: "#000000"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -83,6 +101,7 @@ flutter:
 
   assets:
     - assets/illustrations/
+    - assets/branding/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

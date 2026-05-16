@@ -167,8 +167,12 @@ class _SlideView extends StatelessWidget {
         children: [
           Expanded(
             child: Center(
-              child: SvgPicture.asset(slide.svg,
-                  height: 240, fit: BoxFit.contain),
+              child: SvgPicture.asset(
+                slide.svg,
+                height: 240,
+                fit: BoxFit.contain,
+                theme: SvgTheme(currentColor: context.ink),
+              ),
             ),
           ),
           const SizedBox(height: 24),

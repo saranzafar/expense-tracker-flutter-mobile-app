@@ -269,7 +269,11 @@ class _Empty extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SvgPicture.asset('assets/illustrations/loans.svg', height: 140),
+          SvgPicture.asset(
+            'assets/illustrations/loans.svg',
+            height: 140,
+            theme: SvgTheme(currentColor: context.ink),
+          ),
           const SizedBox(height: 16),
           Text(
               isOutstanding

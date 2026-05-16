@@ -380,7 +380,11 @@ class _EmptyRecent extends StatelessWidget {
       ),
       child: Column(
         children: [
-          SvgPicture.asset('assets/illustrations/track.svg', height: 120),
+          SvgPicture.asset(
+            'assets/illustrations/track.svg',
+            height: 120,
+            theme: SvgTheme(currentColor: context.ink),
+          ),
           const SizedBox(height: 12),
           Text('Nothing tracked yet',
               style: AppTextStyles.title.copyWith(color: context.ink)),
