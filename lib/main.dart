@@ -4,18 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 import 'core/currency.dart';
 import 'data/settings_repo.dart';
+import 'features/backup/data/backup_prefs.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final repo = SettingsRepo();
-  final themeMode = await repo.readThemeMode();
-  final currency = await repo.readCurrency();
+  final settingsRepo = SettingsRepo();
+  final backupRepo = BackupPrefsRepo();
+  final themeMode = await settingsRepo.readThemeMode();
+  final currency = await settingsRepo.readCurrency();
+  final backupPrefs = await backupRepo.read();
 
   runApp(
     ProviderScope(
       overrides: [
         themeModeProvider.overrideWith(() => _PrefilledThemeMode(themeMode)),
         currencyProvider.overrideWith(() => _PrefilledCurrency(currency)),
+        backupPrefsProvider
+            .overrideWith(() => _PrefilledBackupPrefs(backupPrefs)),
       ],
       child: const XpenseApp(),
     ),
@@ -34,4 +39,11 @@ class _PrefilledCurrency extends CurrencyNotifier {
   final CurrencyOption initial;
   @override
   CurrencyOption build() => initial;
+}
+
+class _PrefilledBackupPrefs extends BackupPrefsNotifier {
+  _PrefilledBackupPrefs(this.initial);
+  final BackupPrefs initial;
+  @override
+  BackupPrefs build() => initial;
 }

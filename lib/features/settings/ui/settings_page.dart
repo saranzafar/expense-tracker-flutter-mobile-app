@@ -6,6 +6,7 @@ import '../../../core/theme.dart';
 import '../../../data/onboarding_repo.dart';
 import '../../../data/settings_repo.dart';
 import '../../about/ui/about_page.dart';
+import '../../backup/ui/backup_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -39,6 +40,17 @@ class SettingsPage extends ConsumerWidget {
                 trailing: Text(currency.flag,
                     style: const TextStyle(fontSize: 22)),
                 onTap: () => _openCurrencySheet(context, ref, currency),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            _Section(title: 'Sync', children: [
+              _Tile(
+                icon: Icons.cloud_outlined,
+                title: 'Backup',
+                subtitle: 'Google Drive · optional',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BackupPage()),
+                ),
               ),
             ]),
             const SizedBox(height: 16),

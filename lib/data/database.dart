@@ -82,6 +82,21 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
+  // --- Backup helpers ---
+  /// Run a checkpointed snapshot of the DB into [destPath] via VACUUM INTO.
+  /// Produces a consistent, app-stable copy without closing connections.
+  Future<void> snapshotTo(String destPath) async {
+    await customStatement("VACUUM INTO ?", [destPath]);
+  }
+
+  Future<int> countRecords() async {
+    final row = await customSelect('SELECT COUNT(*) AS c FROM records')
+        .getSingle();
+    return row.read<int>('c');
+  }
+
+  Future<bool> isEmpty() async => (await countRecords()) == 0;
+
   Stream<List<RecordRow>> watchRecords({
     RecordType? type,
     Set<RecordType>? typesIn,

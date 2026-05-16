@@ -128,6 +128,15 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                       child: Text(_isLast ? 'Get started' : 'Continue'),
                     ),
                   ),
+                  if (_isLast) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Optional: back up to Google Drive anytime in Settings.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.caption
+                          .copyWith(color: context.inkSubtle),
+                    ),
+                  ],
                 ],
               ),
             ),

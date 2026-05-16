@@ -8,6 +8,7 @@ import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
 import '../../../shell/home_shell.dart';
+import '../../backup/ui/widgets/profile_chip.dart';
 import '../../records/ui/record_form_page.dart';
 import '../../records/widgets/record_tile.dart';
 
@@ -42,14 +43,7 @@ class HomePage extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Container(
-                  height: 8,
-                  width: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.green,
-                    shape: BoxShape.circle,
-                  ),
-                ),
+                const ProfileChip(),
               ],
             ),
             const SizedBox(height: 20),
