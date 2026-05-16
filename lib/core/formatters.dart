@@ -1,20 +1,16 @@
 import 'package:intl/intl.dart';
 
-final _pkr = NumberFormat.currency(
-  locale: 'en_PK',
-  symbol: 'Rs ',
-  decimalDigits: 0,
-);
+import 'currency.dart';
+
 final _date = DateFormat('d MMM yyyy');
 final _dayHeader = DateFormat('EEE, d MMM');
 final _shortDate = DateFormat('d MMM');
 
-String formatPkr(int minor) => _pkr.format(minor / 100);
+String formatMoneyWith(int minor, CurrencyOption c) => formatMoney(minor, c);
 
-String formatPkrSigned(int minor, {required bool negative}) {
-  final s = formatPkr(minor.abs());
-  return negative ? '− $s' : '+ $s';
-}
+String formatMoneySignedWith(int minor, CurrencyOption c,
+        {required bool negative}) =>
+    formatMoneySigned(minor, c, negative: negative);
 
 String formatDate(DateTime d) => _date.format(d);
 String formatDayHeader(DateTime d) => _dayHeader.format(d);

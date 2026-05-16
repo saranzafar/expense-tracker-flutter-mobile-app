@@ -63,7 +63,8 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
                   if (items.isEmpty) {
                     return Center(
                       child: Text('No records yet.',
-                          style: AppTextStyles.caption),
+                          style: AppTextStyles.caption
+                              .copyWith(color: context.inkMuted)),
                     );
                   }
                   final groups = _groupByDay(items);
@@ -79,7 +80,8 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
                             padding:
                                 const EdgeInsets.fromLTRB(20, 14, 20, 6),
                             child: Text(formatDayHeader(g.day),
-                                style: AppTextStyles.caption),
+                                style: AppTextStyles.caption
+                                    .copyWith(color: context.inkMuted)),
                           ),
                           for (final r in g.items)
                             Dismissible(
@@ -179,15 +181,15 @@ class _FilterChip extends StatelessWidget {
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.ink : Colors.transparent,
+          color: selected ? context.ink : Colors.transparent,
           border: Border.all(
-              color: selected ? AppColors.ink : AppColors.hairline),
+              color: selected ? context.ink : context.hairline),
           borderRadius: BorderRadius.circular(100),
         ),
         child: Text(
           label,
           style: AppTextStyles.caption.copyWith(
-              color: selected ? AppColors.surface : AppColors.ink,
+              color: selected ? context.surface : context.ink,
               fontWeight: FontWeight.w600),
         ),
       ),

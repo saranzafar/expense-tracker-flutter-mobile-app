@@ -66,13 +66,13 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Xpense Tracker',
-                      style: AppTextStyles.title
-                          .copyWith(fontWeight: FontWeight.w700)),
+                      style: AppTextStyles.title.copyWith(
+                          fontWeight: FontWeight.w700, color: context.ink)),
                   TextButton(
                     onPressed: _finish,
                     child: Text('Skip',
                         style: AppTextStyles.body
-                            .copyWith(color: AppColors.inkMuted)),
+                            .copyWith(color: context.inkMuted)),
                   ),
                 ],
               ),
@@ -101,7 +101,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                           decoration: BoxDecoration(
                             color: i == _page
                                 ? AppColors.green
-                                : AppColors.hairline,
+                                : context.hairline,
                             borderRadius: BorderRadius.circular(100),
                           ),
                         ),
@@ -164,11 +164,12 @@ class _SlideView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(slide.title,
-              style: AppTextStyles.headline.copyWith(fontSize: 26),
+              style: AppTextStyles.headline
+                  .copyWith(fontSize: 26, color: context.ink),
               textAlign: TextAlign.center),
           const SizedBox(height: 10),
           Text(slide.body,
-              style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+              style: AppTextStyles.body.copyWith(color: context.inkMuted),
               textAlign: TextAlign.center),
         ],
       ),

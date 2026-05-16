@@ -77,8 +77,8 @@ class _BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.hairline)),
+        color: context.surface,
+        border: Border(top: BorderSide(color: context.hairline)),
       ),
       child: SafeArea(
         top: false,
@@ -113,7 +113,7 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.ink : AppColors.inkSubtle;
+    final color = selected ? context.ink : context.inkSubtle;
     return InkWell(
       onTap: onTap,
       child: Column(
@@ -149,7 +149,8 @@ Future<void> _openAddSheet(BuildContext context) async {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Add new', style: AppTextStyles.headline),
+            Text('Add new',
+                style: AppTextStyles.headline.copyWith(color: context.ink)),
             const SizedBox(height: 16),
             _TypeCard(
               icon: Icons.arrow_upward_rounded,
@@ -206,7 +207,7 @@ class _TypeCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.hairline),
+          border: Border.all(color: context.hairline),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -217,25 +218,27 @@ class _TypeCard extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: accent ? AppColors.greenSoft : Colors.transparent,
-                border: Border.all(color: AppColors.hairline),
+                border: Border.all(color: context.hairline),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: AppColors.ink, size: 22),
+              child: Icon(icon, color: context.ink, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.title),
+                  Text(title,
+                      style:
+                          AppTextStyles.title.copyWith(color: context.ink)),
                   const SizedBox(height: 2),
                   Text(subtitle,
                       style: AppTextStyles.caption
-                          .copyWith(color: AppColors.inkMuted)),
+                          .copyWith(color: context.inkMuted)),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: AppColors.inkSubtle),
+            Icon(Icons.chevron_right, color: context.inkSubtle),
           ],
         ),
       ),

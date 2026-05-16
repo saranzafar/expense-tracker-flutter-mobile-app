@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/currency.dart';
 import '../../../core/formatters.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
+import '../../../data/settings_repo.dart';
 import '../ui/record_form_page.dart';
 
-class RecordTile extends StatelessWidget {
+class RecordTile extends ConsumerWidget {
   const RecordTile({super.key, required this.record});
   final RecordRow record;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currency = ref.watch(currencyProvider);
     final isExpense = record.type == RecordType.expense;
     final isIncome = record.type == RecordType.income;
     final isLoan = record.type == RecordType.loanGiven;
@@ -38,8 +42,8 @@ class RecordTile extends StatelessWidget {
         : formatShortDate(record.occurredAt);
 
     final String amount = isIncome
-        ? formatPkrSigned(record.amountMinor, negative: false)
-        : formatPkrSigned(record.amountMinor, negative: true);
+        ? formatMoneySigned(record.amountMinor, currency, negative: false)
+        : formatMoneySigned(record.amountMinor, currency, negative: true);
 
     return InkWell(
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -56,11 +60,11 @@ class RecordTile extends StatelessWidget {
               width: 40,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.hairline),
+                border: Border.all(color: context.hairline),
                 borderRadius: BorderRadius.circular(12),
                 color: isLoan ? AppColors.greenSoft : null,
               ),
-              child: Icon(icon, color: AppColors.ink, size: 20),
+              child: Icon(icon, color: context.ink, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -68,18 +72,21 @@ class RecordTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: AppTextStyles.body
-                          .copyWith(fontWeight: FontWeight.w600),
+                      style: AppTextStyles.body.copyWith(
+                          color: context.ink,
+                          fontWeight: FontWeight.w600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: AppTextStyles.caption),
+                  Text(subtitle,
+                      style: AppTextStyles.caption
+                          .copyWith(color: context.inkMuted)),
                 ],
               ),
             ),
             Text(amount,
-                style: AppTextStyles.body
-                    .copyWith(fontWeight: FontWeight.w700)),
+                style: AppTextStyles.body.copyWith(
+                    color: context.ink, fontWeight: FontWeight.w700)),
           ],
         ),
       ),

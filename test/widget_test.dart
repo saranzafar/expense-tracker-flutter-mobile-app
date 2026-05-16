@@ -10,7 +10,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const ProviderScope(child: XpenseApp()));
     await tester.pumpAndSettle(const Duration(milliseconds: 300));
-    expect(find.text('Welcome to Xpense Traker'), findsOneWidget);
+    expect(find.text('Welcome to Xpense Tracker'), findsOneWidget);
     expect(find.text('Continue'), findsOneWidget);
   });
 }

@@ -7,6 +7,7 @@ import '../../../core/formatters.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
+import '../../../data/settings_repo.dart';
 
 class RecordFormPage extends ConsumerStatefulWidget {
   const RecordFormPage({super.key, required this.type, this.existing});
@@ -65,6 +66,9 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final currency = ref.watch(currencyProvider);
+    final captionMuted =
+        AppTextStyles.caption.copyWith(color: context.inkMuted);
     return Scaffold(
       appBar: AppBar(
         title: Text(_title),
@@ -81,14 +85,15 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
-            Text('Amount (PKR)', style: AppTextStyles.caption),
+            Text('Amount (${currency.code})', style: captionMuted),
             const SizedBox(height: 8),
             TextFormField(
               controller: _amount,
               autofocus: !_isEdit,
-              style: AppTextStyles.display.copyWith(fontSize: 32),
-              decoration: const InputDecoration(
-                prefixText: 'Rs  ',
+              style: AppTextStyles.display
+                  .copyWith(fontSize: 32, color: context.ink),
+              decoration: InputDecoration(
+                prefixText: '${currency.symbol}  ',
                 hintText: '0',
               ),
               keyboardType:
@@ -104,7 +109,7 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
             ),
             const SizedBox(height: 20),
             if (_isLoan) ...[
-              Text('To whom', style: AppTextStyles.caption),
+              Text('To whom', style: captionMuted),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _counterparty,
@@ -119,7 +124,7 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
               ),
               const SizedBox(height: 20),
             ],
-            Text('Description', style: AppTextStyles.caption),
+            Text('Description', style: captionMuted),
             const SizedBox(height: 8),
             TextFormField(
               controller: _description,
@@ -129,7 +134,7 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
               maxLines: 2,
             ),
             const SizedBox(height: 20),
-            Text('Date', style: AppTextStyles.caption),
+            Text('Date', style: captionMuted),
             const SizedBox(height: 8),
             _DateField(
               value: _occurredAt,
@@ -137,7 +142,7 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
             ),
             if (_isLoan) ...[
               const SizedBox(height: 20),
-              Text('Expected return date', style: AppTextStyles.caption),
+              Text('Expected return date', style: captionMuted),
               const SizedBox(height: 8),
               _DateField(
                 value: _expectedReturnAt,
@@ -237,13 +242,13 @@ class _DateField extends StatelessWidget {
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.hairline),
+          border: Border.all(color: context.hairline),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined,
-                size: 18, color: AppColors.ink),
+            Icon(Icons.calendar_today_outlined,
+                size: 18, color: context.ink),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -252,8 +257,8 @@ class _DateField extends StatelessWidget {
                     : (placeholder ?? 'Pick a date'),
                 style: AppTextStyles.body.copyWith(
                     color: value != null
-                        ? AppColors.ink
-                        : AppColors.inkSubtle),
+                        ? context.ink
+                        : context.inkSubtle),
               ),
             ),
             if (value != null && onClear != null)

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/currency.dart';
 import '../../../core/formatters.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
+import '../../../data/settings_repo.dart';
 import '../../records/ui/record_form_page.dart';
 
 class LoansPage extends ConsumerStatefulWidget {
@@ -46,8 +48,8 @@ class _LoansPageState extends ConsumerState<LoansPage>
             indicatorColor: AppColors.green,
             indicatorWeight: 3,
             indicatorSize: TabBarIndicatorSize.label,
-            labelColor: AppColors.ink,
-            unselectedLabelColor: AppColors.inkSubtle,
+            labelColor: context.ink,
+            unselectedLabelColor: context.inkSubtle,
             labelStyle:
                 AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
             unselectedLabelStyle: AppTextStyles.body,
@@ -100,6 +102,7 @@ class _LoanCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currency = ref.watch(currencyProvider);
     final overdue = !loan.returned &&
         loan.expectedReturnAt != null &&
         loan.expectedReturnAt!.isBefore(DateTime.now());
@@ -113,7 +116,7 @@ class _LoanCard extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.hairline),
+          border: Border.all(color: context.hairline),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -129,8 +132,8 @@ class _LoanCard extends ConsumerWidget {
                     color: AppColors.greenSoft,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.handshake_outlined,
-                      size: 20, color: AppColors.ink),
+                  child: Icon(Icons.handshake_outlined,
+                      size: 20, color: context.ink),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -138,19 +141,21 @@ class _LoanCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(loan.counterparty ?? 'Loan',
-                          style: AppTextStyles.title),
+                          style: AppTextStyles.title
+                              .copyWith(color: context.ink)),
                       const SizedBox(height: 2),
                       if (loan.description?.isNotEmpty == true)
                         Text(loan.description!,
-                            style: AppTextStyles.caption,
+                            style: AppTextStyles.caption
+                                .copyWith(color: context.inkMuted),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
-                Text(formatPkr(loan.amountMinor),
-                    style: AppTextStyles.title
-                        .copyWith(fontWeight: FontWeight.w700)),
+                Text(formatMoney(loan.amountMinor, currency),
+                    style: AppTextStyles.title.copyWith(
+                        color: context.ink, fontWeight: FontWeight.w700)),
               ],
             ),
             const SizedBox(height: 12),
@@ -160,14 +165,15 @@ class _LoanCard extends ConsumerWidget {
                   _Badge(
                     text: 'Returned',
                     bg: AppColors.greenSoft,
-                    fg: AppColors.ink,
+                    fg: context.ink,
                   ),
                   const SizedBox(width: 8),
                   Text(
                       loan.returnedAt != null
                           ? 'on ${formatShortDate(loan.returnedAt!)}'
                           : '',
-                      style: AppTextStyles.caption),
+                      style: AppTextStyles.caption
+                          .copyWith(color: context.inkMuted)),
                 ] else ...[
                   if (loan.expectedReturnAt != null)
                     _Badge(
@@ -176,8 +182,9 @@ class _LoanCard extends ConsumerWidget {
                       bg: overdue
                           ? AppColors.danger.withValues(alpha: 0.1)
                           : Colors.transparent,
-                      fg: overdue ? AppColors.danger : AppColors.inkMuted,
+                      fg: overdue ? AppColors.danger : context.inkMuted,
                       border: !overdue,
+                      borderColor: context.hairline,
                     ),
                   const Spacer(),
                   TextButton(
@@ -206,7 +213,7 @@ class _LoanCard extends ConsumerWidget {
                         .markLoanReturned(loan.id, returned: false),
                     child: Text('Undo',
                         style: AppTextStyles.caption.copyWith(
-                            color: AppColors.ink,
+                            color: context.ink,
                             fontWeight: FontWeight.w700)),
                   ),
                 ],
@@ -225,11 +232,13 @@ class _Badge extends StatelessWidget {
     required this.bg,
     required this.fg,
     this.border = false,
+    this.borderColor,
   });
   final String text;
   final Color bg;
   final Color fg;
   final bool border;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +247,9 @@ class _Badge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(100),
-        border: border ? Border.all(color: AppColors.hairline) : null,
+        border: border
+            ? Border.all(color: borderColor ?? context.hairline)
+            : null,
       ),
       child: Text(text,
           style: AppTextStyles.caption
@@ -264,13 +275,14 @@ class _Empty extends StatelessWidget {
               isOutstanding
                   ? 'No outstanding loans'
                   : 'Nothing returned yet',
-              style: AppTextStyles.title),
+              style: AppTextStyles.title.copyWith(color: context.ink)),
           const SizedBox(height: 6),
           Text(
             isOutstanding
                 ? 'When you lend money, it shows up here.'
                 : 'Loans marked as returned will appear here.',
-            style: AppTextStyles.caption,
+            style:
+                AppTextStyles.caption.copyWith(color: context.inkMuted),
             textAlign: TextAlign.center,
           ),
         ],

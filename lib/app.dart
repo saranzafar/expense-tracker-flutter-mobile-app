@@ -3,18 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme.dart';
 import 'data/onboarding_repo.dart';
+import 'data/settings_repo.dart';
 import 'features/onboarding/ui/onboarding_page.dart';
 import 'shell/home_shell.dart';
 
-class XpenseApp extends StatelessWidget {
+class XpenseApp extends ConsumerWidget {
   const XpenseApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider);
     return MaterialApp(
       title: 'Xpense Tracker',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      darkTheme: buildDarkAppTheme(),
+      themeMode: mode,
       home: const _RootGate(),
     );
   }
