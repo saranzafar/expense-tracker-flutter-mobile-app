@@ -240,21 +240,12 @@ class _MiniStat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          Icon(icon, size: 14, color: subtleColor),
+          Icon(icon,
+              size: 14,
+              color: accentDot ? AppColors.green : subtleColor),
           const SizedBox(width: 4),
           Text(label,
               style: AppTextStyles.caption.copyWith(color: mutedColor)),
-          if (accentDot) ...[
-            const SizedBox(width: 4),
-            Container(
-              height: 3,
-              width: 3,
-              decoration: const BoxDecoration(
-                color: AppColors.green,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ],
         ]),
         const SizedBox(height: 4),
         Text(value,

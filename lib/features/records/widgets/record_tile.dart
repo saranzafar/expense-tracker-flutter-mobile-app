@@ -64,7 +64,8 @@ class RecordTile extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(12),
                 color: isLoan ? AppColors.greenSoft : null,
               ),
-              child: Icon(icon, color: context.ink, size: 20),
+              child: Icon(icon,
+                  color: isIncome ? AppColors.green : context.ink, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(
