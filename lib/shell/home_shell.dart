@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme.dart';
 import '../features/home/ui/home_page.dart';
@@ -8,15 +9,12 @@ import '../features/records/ui/records_list_page.dart';
 import '../features/settings/ui/settings_page.dart';
 import '../data/database.dart';
 
-class HomeShell extends StatefulWidget {
+/// Index of the currently-active bottom-nav tab.
+/// 0 = Home, 1 = Records, 2 = Loans, 3 = Settings.
+final shellTabProvider = StateProvider<int>((_) => 0);
+
+class HomeShell extends ConsumerWidget {
   const HomeShell({super.key});
-
-  @override
-  State<HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends State<HomeShell> {
-  int _index = 0;
 
   static const _pages = <Widget>[
     HomePage(),
@@ -33,10 +31,11 @@ class _HomeShellState extends State<HomeShell> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final index = ref.watch(shellTabProvider);
     return Scaffold(
       extendBody: true,
-      body: _pages[_index],
+      body: _pages[index],
       floatingActionButton: SizedBox(
         height: 64,
         width: 64,
@@ -49,8 +48,8 @@ class _HomeShellState extends State<HomeShell> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _BottomBar(
         items: _items,
-        index: _index,
-        onTap: (i) => setState(() => _index = i),
+        index: index,
+        onTap: (i) => ref.read(shellTabProvider.notifier).state = i,
       ),
     );
   }

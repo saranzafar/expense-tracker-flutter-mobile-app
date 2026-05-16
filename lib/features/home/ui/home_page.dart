@@ -7,6 +7,7 @@ import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
+import '../../../shell/home_shell.dart';
 import '../../records/ui/record_form_page.dart';
 import '../../records/widgets/record_tile.dart';
 
@@ -72,7 +73,9 @@ class HomePage extends ConsumerWidget {
                     style: AppTextStyles.title.copyWith(color: context.ink)),
                 stats.maybeWhen(
                   data: (_) => TextButton(
-                      onPressed: () {},
+                      onPressed: () => ref
+                          .read(shellTabProvider.notifier)
+                          .state = 1,
                       child: Text('See all',
                           style: AppTextStyles.caption
                               .copyWith(color: context.ink))),
