@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/onboarding_repo.dart';
 import '../../../shell/home_shell.dart';
@@ -94,7 +95,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     children: [
                       for (int i = 0; i < _pages.length; i++)
                         AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                          duration: AppMotion.med,
+                          curve: AppMotion.enter,
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           height: 6,
                           width: i == _page ? 22 : 6,
@@ -125,7 +127,13 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                           );
                         }
                       },
-                      child: Text(_isLast ? 'Get started' : 'Continue'),
+                      child: XSwitcher(
+                        duration: AppMotion.fast,
+                        child: Text(
+                          _isLast ? 'Get started' : 'Continue',
+                          key: ValueKey(_isLast),
+                        ),
+                      ),
                     ),
                   ),
                   if (_isLast) ...[
@@ -167,23 +175,34 @@ class _SlideView extends StatelessWidget {
         children: [
           Expanded(
             child: Center(
-              child: SvgPicture.asset(
-                slide.svg,
-                height: 240,
-                fit: BoxFit.contain,
-                theme: SvgTheme(currentColor: context.ink),
+              child: FadeIn(
+                key: ValueKey('svg-${slide.svg}'),
+                child: SvgPicture.asset(
+                  slide.svg,
+                  height: 240,
+                  fit: BoxFit.contain,
+                  theme: SvgTheme(currentColor: context.ink),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 24),
-          Text(slide.title,
-              style: AppTextStyles.headline
-                  .copyWith(fontSize: 26, color: context.ink),
-              textAlign: TextAlign.center),
+          FadeIn(
+            key: ValueKey('title-${slide.title}'),
+            delay: const Duration(milliseconds: 60),
+            child: Text(slide.title,
+                style: AppTextStyles.headline
+                    .copyWith(fontSize: 26, color: context.ink),
+                textAlign: TextAlign.center),
+          ),
           const SizedBox(height: 10),
-          Text(slide.body,
-              style: AppTextStyles.body.copyWith(color: context.inkMuted),
-              textAlign: TextAlign.center),
+          FadeIn(
+            key: ValueKey('body-${slide.body}'),
+            delay: const Duration(milliseconds: 120),
+            child: Text(slide.body,
+                style: AppTextStyles.body.copyWith(color: context.inkMuted),
+                textAlign: TextAlign.center),
+          ),
         ],
       ),
     );

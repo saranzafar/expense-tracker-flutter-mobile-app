@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/currency.dart';
+import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
@@ -47,17 +48,29 @@ class HomePage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
-            stats.when(
-              loading: () => const _BalanceCardSkeleton(),
-              error: (e, _) => Text('Error: $e'),
-              data: (s) => _BalanceCard(stats: s, currency: currency),
+            XSwitcher(
+              child: stats.when(
+                loading: () => const _BalanceCardSkeleton(
+                    key: ValueKey('balance-loading')),
+                error: (e, _) => Text('Error: $e',
+                    key: const ValueKey('balance-error')),
+                data: (s) => _BalanceCard(
+                    key: const ValueKey('balance-data'),
+                    stats: s,
+                    currency: currency),
+              ),
             ),
             const SizedBox(height: 16),
-            stats.maybeWhen(
-              data: (s) => s.outstandingLoanCount == 0
-                  ? const SizedBox.shrink()
-                  : _OutstandingCard(stats: s, currency: currency),
-              orElse: () => const SizedBox.shrink(),
+            XSwitcher(
+              child: stats.maybeWhen(
+                data: (s) => s.outstandingLoanCount == 0
+                    ? const SizedBox.shrink(key: ValueKey('out-empty'))
+                    : _OutstandingCard(
+                        key: const ValueKey('out-card'),
+                        stats: s,
+                        currency: currency),
+                orElse: () => const SizedBox.shrink(key: ValueKey('out-none')),
+              ),
             ),
             const SizedBox(height: 24),
             Row(
@@ -77,20 +90,31 @@ class HomePage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            recent.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Center(child: CircularProgressIndicator()),
+            XSwitcher(
+              child: recent.when(
+                loading: () => const Padding(
+                  key: ValueKey('recent-loading'),
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) =>
+                    Text('$e', key: const ValueKey('recent-error')),
+                data: (items) {
+                  if (items.isEmpty) {
+                    return const _EmptyRecent(key: ValueKey('recent-empty'));
+                  }
+                  return Column(
+                    key: const ValueKey('recent-list'),
+                    children: [
+                      for (final r in items)
+                        FadeIn(
+                          key: ValueKey(r.id),
+                          child: RecordTile(record: r, currency: currency),
+                        ),
+                    ],
+                  );
+                },
               ),
-              error: (e, _) => Text('$e'),
-              data: (items) {
-                if (items.isEmpty) return const _EmptyRecent();
-                return Column(
-                  children: [
-                    for (final r in items) RecordTile(record: r),
-                  ],
-                );
-              },
             ),
           ],
         ),
@@ -100,7 +124,7 @@ class HomePage extends ConsumerWidget {
 }
 
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.stats, required this.currency});
+  const _BalanceCard({super.key, required this.stats, required this.currency});
   final DashboardStats stats;
   final CurrencyOption currency;
 
@@ -126,7 +150,10 @@ class _BalanceCard extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: CustomPaint(painter: _BalanceDecorPainter(isDark: isDark)),
+              child: RepaintBoundary(
+                child: CustomPaint(
+                    painter: _BalanceDecorPainter(isDark: isDark)),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(24),
@@ -163,8 +190,9 @@ class _BalanceCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    formatMoney(stats.availableBalance, currency),
+                  AnimatedMoney(
+                    minor: stats.availableBalance,
+                    currency: currency,
                     style: AppTextStyles.display
                         .copyWith(color: AppColors.green, fontSize: 38),
                   ),
@@ -176,8 +204,8 @@ class _BalanceCard extends StatelessWidget {
                       Expanded(
                         child: _MiniStat(
                           label: 'Income (mo)',
-                          value:
-                              formatMoney(stats.monthIncomeMinor, currency),
+                          minor: stats.monthIncomeMinor,
+                          currency: currency,
                           icon: Icons.arrow_downward_rounded,
                           valueColor: valueColor,
                           mutedColor: muted,
@@ -191,8 +219,8 @@ class _BalanceCard extends StatelessWidget {
                           padding: const EdgeInsets.only(left: 12),
                           child: _MiniStat(
                             label: 'Expense (mo)',
-                            value: formatMoney(
-                                stats.monthExpenseMinor, currency),
+                            minor: stats.monthExpenseMinor,
+                            currency: currency,
                             icon: Icons.arrow_upward_rounded,
                             valueColor: valueColor,
                             mutedColor: muted,
@@ -215,7 +243,8 @@ class _BalanceCard extends StatelessWidget {
 class _MiniStat extends StatelessWidget {
   const _MiniStat({
     required this.label,
-    required this.value,
+    required this.minor,
+    required this.currency,
     required this.icon,
     required this.valueColor,
     required this.mutedColor,
@@ -223,7 +252,8 @@ class _MiniStat extends StatelessWidget {
     this.accentDot = false,
   });
   final String label;
-  final String value;
+  final int minor;
+  final CurrencyOption currency;
   final IconData icon;
   final Color valueColor;
   final Color mutedColor;
@@ -244,9 +274,12 @@ class _MiniStat extends StatelessWidget {
               style: AppTextStyles.caption.copyWith(color: mutedColor)),
         ]),
         const SizedBox(height: 4),
-        Text(value,
-            style: AppTextStyles.title
-                .copyWith(color: valueColor, fontWeight: FontWeight.w700)),
+        AnimatedMoney(
+          minor: minor,
+          currency: currency,
+          style: AppTextStyles.title
+              .copyWith(color: valueColor, fontWeight: FontWeight.w700),
+        ),
       ],
     );
   }
@@ -303,7 +336,7 @@ class _BalanceDecorPainter extends CustomPainter {
 }
 
 class _BalanceCardSkeleton extends StatelessWidget {
-  const _BalanceCardSkeleton();
+  const _BalanceCardSkeleton({super.key});
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -320,7 +353,8 @@ class _BalanceCardSkeleton extends StatelessWidget {
 }
 
 class _OutstandingCard extends StatelessWidget {
-  const _OutstandingCard({required this.stats, required this.currency});
+  const _OutstandingCard(
+      {super.key, required this.stats, required this.currency});
   final DashboardStats stats;
   final CurrencyOption currency;
 
@@ -354,9 +388,12 @@ class _OutstandingCard extends StatelessWidget {
                     style: AppTextStyles.caption
                         .copyWith(color: context.inkMuted)),
                 const SizedBox(height: 2),
-                Text(formatMoney(stats.outstandingLoanMinor, currency),
-                    style: AppTextStyles.title.copyWith(
-                        fontWeight: FontWeight.w700, color: context.ink)),
+                AnimatedMoney(
+                  minor: stats.outstandingLoanMinor,
+                  currency: currency,
+                  style: AppTextStyles.title.copyWith(
+                      fontWeight: FontWeight.w700, color: context.ink),
+                ),
               ],
             ),
           ),
@@ -368,7 +405,7 @@ class _OutstandingCard extends StatelessWidget {
 }
 
 class _EmptyRecent extends StatelessWidget {
-  const _EmptyRecent();
+  const _EmptyRecent({super.key});
   @override
   Widget build(BuildContext context) {
     return Container(

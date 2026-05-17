@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/providers.dart';
 import '../data/backup_prefs.dart';
@@ -349,12 +350,22 @@ class _StatusCard extends StatelessWidget {
               color: AppColors.greenSoft,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AppColors.ink, size: 22),
+            child: XSwitcher(
+              duration: AppMotion.fast,
+              child: Icon(icon,
+                  key: ValueKey(icon.codePoint),
+                  color: AppColors.ink,
+                  size: 22),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(title,
-                style: AppTextStyles.title.copyWith(color: context.ink)),
+            child: XSwitcher(
+              duration: AppMotion.fast,
+              child: Text(title,
+                  key: ValueKey(title),
+                  style: AppTextStyles.title.copyWith(color: context.ink)),
+            ),
           ),
         ],
       ),

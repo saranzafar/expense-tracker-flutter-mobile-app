@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/currency.dart';
 import '../../../core/formatters.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
-import '../../../data/settings_repo.dart';
 import '../ui/record_form_page.dart';
 
-class RecordTile extends ConsumerWidget {
-  const RecordTile({super.key, required this.record});
+class RecordTile extends StatelessWidget {
+  const RecordTile({super.key, required this.record, required this.currency});
   final RecordRow record;
+  final CurrencyOption currency;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currency = ref.watch(currencyProvider);
+  Widget build(BuildContext context) {
     final isExpense = record.type == RecordType.expense;
     final isIncome = record.type == RecordType.income;
     final isLoan = record.type == RecordType.loanGiven;

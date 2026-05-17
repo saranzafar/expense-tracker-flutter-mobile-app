@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/currency.dart';
+import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/onboarding_repo.dart';
 import '../../../data/settings_repo.dart';
@@ -118,23 +119,41 @@ Future<void> _openThemeSheet(
             Text('Theme',
                 style: AppTextStyles.headline.copyWith(color: context.ink)),
             const SizedBox(height: 16),
-            for (final m in const [
-              ThemeMode.light,
-              ThemeMode.dark,
-              ThemeMode.system,
-            ]) ...[
-              _ChoiceTile(
-                icon: m == ThemeMode.light
-                    ? Icons.light_mode_outlined
-                    : m == ThemeMode.dark
-                        ? Icons.dark_mode_outlined
-                        : Icons.brightness_auto_outlined,
-                title: _themeLabel(m),
-                selected: m == current,
-                onTap: () async {
-                  await ref.read(themeModeProvider.notifier).set(m);
-                  if (ctx.mounted) Navigator.pop(ctx);
-                },
+            for (int i = 0;
+                i < const [
+                  ThemeMode.light,
+                  ThemeMode.dark,
+                  ThemeMode.system,
+                ].length;
+                i++) ...[
+              FadeIn(
+                delay: Duration(milliseconds: 40 * i),
+                child: _ChoiceTile(
+                  icon: [
+                    Icons.light_mode_outlined,
+                    Icons.dark_mode_outlined,
+                    Icons.brightness_auto_outlined,
+                  ][i],
+                  title: _themeLabel([
+                    ThemeMode.light,
+                    ThemeMode.dark,
+                    ThemeMode.system,
+                  ][i]),
+                  selected: [
+                        ThemeMode.light,
+                        ThemeMode.dark,
+                        ThemeMode.system,
+                      ][i] ==
+                      current,
+                  onTap: () async {
+                    await ref.read(themeModeProvider.notifier).set([
+                      ThemeMode.light,
+                      ThemeMode.dark,
+                      ThemeMode.system,
+                    ][i]);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                ),
               ),
               const SizedBox(height: 8),
             ],
@@ -175,17 +194,20 @@ Future<void> _openCurrencySheet(
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final c = kCurrencies[i];
-                  return _ChoiceTile(
-                    leadingText: c.flag,
-                    title: '${c.code} · ${c.name}',
-                    subtitle: c.symbol,
-                    selected: c.code == current.code,
-                    onTap: () async {
-                      await ref
-                          .read(currencyProvider.notifier)
-                          .set(c.code);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    },
+                  return FadeIn(
+                    delay: Duration(milliseconds: (i * 25).clamp(0, 200)),
+                    child: _ChoiceTile(
+                      leadingText: c.flag,
+                      title: '${c.code} · ${c.name}',
+                      subtitle: c.symbol,
+                      selected: c.code == current.code,
+                      onTap: () async {
+                        await ref
+                            .read(currencyProvider.notifier)
+                            .set(c.code);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                    ),
                   );
                 },
               ),
@@ -300,7 +322,9 @@ class _ChoiceTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
-      child: Container(
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        curve: AppMotion.enter,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           border: Border.all(
@@ -334,8 +358,15 @@ class _ChoiceTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (selected)
-              const Icon(Icons.check_circle, color: AppColors.green, size: 22),
+            XSwitcher(
+              duration: AppMotion.fast,
+              child: selected
+                  ? const Icon(Icons.check_circle,
+                      key: ValueKey('check'),
+                      color: AppColors.green,
+                      size: 22)
+                  : const SizedBox(key: ValueKey('nocheck'), width: 22),
+            ),
           ],
         ),
       ),

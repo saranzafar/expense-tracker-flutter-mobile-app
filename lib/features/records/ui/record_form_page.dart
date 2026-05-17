@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/formatters.dart';
+import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
@@ -108,22 +109,30 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
               },
             ),
             const SizedBox(height: 20),
-            if (_isLoan) ...[
-              Text('To whom', style: captionMuted),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _counterparty,
-                decoration: const InputDecoration(
-                  hintText: 'Name',
-                ),
-                validator: (v) {
-                  if (!_isLoan) return null;
-                  if (v == null || v.trim().isEmpty) return 'Required';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
+            AnimatedSize(
+              duration: AppMotion.med,
+              curve: AppMotion.enter,
+              alignment: Alignment.topCenter,
+              child: !_isLoan
+                  ? const SizedBox(width: double.infinity)
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('To whom', style: captionMuted),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _counterparty,
+                          decoration: const InputDecoration(hintText: 'Name'),
+                          validator: (v) {
+                            if (!_isLoan) return null;
+                            if (v == null || v.trim().isEmpty) return 'Required';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+            ),
             Text('Description', style: captionMuted),
             const SizedBox(height: 8),
             TextFormField(
@@ -140,17 +149,29 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
               value: _occurredAt,
               onPick: (d) => setState(() => _occurredAt = d),
             ),
-            if (_isLoan) ...[
-              const SizedBox(height: 20),
-              Text('Expected return date', style: captionMuted),
-              const SizedBox(height: 8),
-              _DateField(
-                value: _expectedReturnAt,
-                placeholder: 'Pick a date',
-                onPick: (d) => setState(() => _expectedReturnAt = d),
-                onClear: () => setState(() => _expectedReturnAt = null),
-              ),
-            ],
+            AnimatedSize(
+              duration: AppMotion.med,
+              curve: AppMotion.enter,
+              alignment: Alignment.topCenter,
+              child: !_isLoan
+                  ? const SizedBox(width: double.infinity)
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 20),
+                        Text('Expected return date', style: captionMuted),
+                        const SizedBox(height: 8),
+                        _DateField(
+                          value: _expectedReturnAt,
+                          placeholder: 'Pick a date',
+                          onPick: (d) =>
+                              setState(() => _expectedReturnAt = d),
+                          onClear: () =>
+                              setState(() => _expectedReturnAt = null),
+                        ),
+                      ],
+                    ),
+            ),
             const SizedBox(height: 32),
             FilledButton(
               style: FilledButton.styleFrom(

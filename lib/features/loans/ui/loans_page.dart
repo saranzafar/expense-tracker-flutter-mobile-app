@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../core/currency.dart';
 import '../../../core/formatters.dart';
+import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
@@ -78,20 +78,31 @@ class _LoansList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return loans.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
-      data: (items) {
-        if (items.isEmpty) {
-          return _Empty(isOutstanding: isOutstanding);
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (_, i) => _LoanCard(loan: items[i]),
-        );
-      },
+    return XSwitcher(
+      child: loans.when(
+        loading: () => const Center(
+            key: ValueKey('loans-loading'),
+            child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+            key: const ValueKey('loans-error'), child: Text('$e')),
+        data: (items) {
+          if (items.isEmpty) {
+            return _Empty(
+                key: const ValueKey('loans-empty'),
+                isOutstanding: isOutstanding);
+          }
+          return ListView.separated(
+            key: const ValueKey('loans-list'),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (_, i) => FadeIn(
+              key: ValueKey(items[i].id),
+              child: _LoanCard(loan: items[i]),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -153,13 +164,18 @@ class _LoanCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Text(formatMoney(loan.amountMinor, currency),
-                    style: AppTextStyles.title.copyWith(
-                        color: context.ink, fontWeight: FontWeight.w700)),
+                AnimatedMoney(
+                  minor: loan.amountMinor,
+                  currency: currency,
+                  style: AppTextStyles.title.copyWith(
+                      color: context.ink, fontWeight: FontWeight.w700),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
+            XSwitcher(
+              child: Row(
+                key: ValueKey(loan.returned),
               children: [
                 if (loan.returned) ...[
                   _Badge(
@@ -218,6 +234,7 @@ class _LoanCard extends ConsumerWidget {
                   ),
                 ],
               ],
+              ),
             ),
           ],
         ),
@@ -259,7 +276,7 @@ class _Badge extends StatelessWidget {
 }
 
 class _Empty extends StatelessWidget {
-  const _Empty({required this.isOutstanding});
+  const _Empty({super.key, required this.isOutstanding});
   final bool isOutstanding;
 
   @override

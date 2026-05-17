@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 
 const _name = 'Saran Zafar';
@@ -58,31 +59,47 @@ class AboutPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
-            _HeaderCard(),
+            FadeIn(delay: const Duration(milliseconds: 0), child: _HeaderCard()),
             const SizedBox(height: 16),
-            _BioCard(),
+            FadeIn(delay: const Duration(milliseconds: 60), child: _BioCard()),
             const SizedBox(height: 16),
-            _SectionLabel('Connect'),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: context.hairline),
-                borderRadius: BorderRadius.circular(20),
-              ),
+            FadeIn(
+              delay: const Duration(milliseconds: 120),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (int i = 0; i < _links.length; i++) ...[
-                    if (i > 0)
-                      Divider(height: 1, color: context.hairline),
-                    _LinkTile(link: _links[i]),
-                  ],
+                  _SectionLabel('Connect'),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: context.hairline),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      children: [
+                        for (int i = 0; i < _links.length; i++) ...[
+                          if (i > 0)
+                            Divider(height: 1, color: context.hairline),
+                          _LinkTile(link: _links[i]),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-            _SectionLabel('This app'),
-            const SizedBox(height: 8),
-            _RepoCard(),
+            FadeIn(
+              delay: const Duration(milliseconds: 180),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SectionLabel('This app'),
+                  const SizedBox(height: 8),
+                  _RepoCard(),
+                ],
+              ),
+            ),
             const SizedBox(height: 32),
             Center(
               child: Text('Made with ♥ in AJK, Pakistan',

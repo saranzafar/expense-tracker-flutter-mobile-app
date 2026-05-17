@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/motion.dart';
 import '../core/theme.dart';
 import '../features/home/ui/home_page.dart';
 import '../features/loans/ui/loans_page.dart';
@@ -95,7 +96,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       },
       child: Scaffold(
         extendBody: true,
-        body: _pages[index],
+        body: AnimatedSwitcher(
+          duration: AppMotion.med,
+          switchInCurve: AppMotion.enter,
+          switchOutCurve: AppMotion.exit,
+          transitionBuilder: (c, a) => FadeTransition(opacity: a, child: c),
+          child: KeyedSubtree(
+            key: ValueKey(index),
+            child: _pages[index],
+          ),
+        ),
         floatingActionButton: SizedBox(
           height: 64,
           width: 64,
@@ -180,19 +190,32 @@ class _NavButton extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
+          AnimatedContainer(
+            duration: AppMotion.fast,
+            curve: AppMotion.enter,
             height: 3,
-            width: 24,
+            width: selected ? 24 : 0,
             decoration: BoxDecoration(
               color: selected ? AppColors.green : Colors.transparent,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 8),
-          Icon(selected ? item.iconSelected : item.icon, color: color, size: 22),
+          AnimatedSwitcher(
+            duration: AppMotion.fast,
+            transitionBuilder: (c, a) =>
+                FadeTransition(opacity: a, child: c),
+            child: Icon(selected ? item.iconSelected : item.icon,
+                key: ValueKey(selected),
+                color: color,
+                size: 22),
+          ),
           const SizedBox(height: 2),
-          Text(item.label,
-              style: AppTextStyles.caption.copyWith(color: color)),
+          AnimatedDefaultTextStyle(
+            duration: AppMotion.fast,
+            style: AppTextStyles.caption.copyWith(color: color),
+            child: Text(item.label),
+          ),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/motion.dart';
 import 'core/theme.dart';
 import 'data/onboarding_repo.dart';
 import 'data/settings_repo.dart';
@@ -20,6 +21,8 @@ class XpenseApp extends ConsumerWidget {
       theme: buildAppTheme(),
       darkTheme: buildDarkAppTheme(),
       themeMode: mode,
+      themeAnimationDuration: AppMotion.med,
+      themeAnimationCurve: AppMotion.enter,
       home: const _RootGate(),
     );
   }

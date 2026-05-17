@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/formatters.dart';
+import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
+import '../../../data/settings_repo.dart';
 import '../widgets/record_tile.dart';
 
 class RecordsListPage extends ConsumerStatefulWidget {
@@ -20,6 +22,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
   @override
   Widget build(BuildContext context) {
     final records = ref.watch(filteredRecordsProvider(_filter));
+    final currency = ref.watch(currencyProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Records')),
       body: SafeArea(
@@ -55,13 +58,17 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
               ),
             ),
             Expanded(
-              child: records.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('$e')),
+              child: XSwitcher(
+                child: records.when(
+                loading: () => const Center(
+                    key: ValueKey('rec-loading'),
+                    child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                    key: const ValueKey('rec-error'), child: Text('$e')),
                 data: (items) {
                   if (items.isEmpty) {
                     return Center(
+                      key: const ValueKey('rec-empty'),
                       child: Text('No records yet.',
                           style: AppTextStyles.caption
                               .copyWith(color: context.inkMuted)),
@@ -69,6 +76,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
                   }
                   final groups = _groupByDay(items);
                   return ListView.builder(
+                    key: const ValueKey('rec-list'),
                     padding: const EdgeInsets.only(bottom: 120),
                     itemCount: groups.length,
                     itemBuilder: (_, i) {
@@ -84,7 +92,9 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
                                     .copyWith(color: context.inkMuted)),
                           ),
                           for (final r in g.items)
-                            Dismissible(
+                            FadeIn(
+                              key: ValueKey('fade-${r.id}'),
+                              child: Dismissible(
                               key: ValueKey(r.id),
                               direction: DismissDirection.endToStart,
                               background: Container(
@@ -130,14 +140,16 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14),
-                                child: RecordTile(record: r),
+                                child: RecordTile(record: r, currency: currency),
                               ),
+                            ),
                             ),
                         ],
                       );
                     },
                   );
                 },
+                ),
               ),
             ),
           ],
@@ -177,8 +189,8 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(100),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
+        duration: AppMotion.fast,
+        curve: AppMotion.enter,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? context.ink : Colors.transparent,
@@ -186,11 +198,12 @@ class _FilterChip extends StatelessWidget {
               color: selected ? context.ink : context.hairline),
           borderRadius: BorderRadius.circular(100),
         ),
-        child: Text(
-          label,
+        child: AnimatedDefaultTextStyle(
+          duration: AppMotion.fast,
           style: AppTextStyles.caption.copyWith(
               color: selected ? context.surface : context.ink,
               fontWeight: FontWeight.w600),
+          child: Text(label),
         ),
       ),
     );
