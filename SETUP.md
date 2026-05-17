@@ -54,3 +54,64 @@ No `google-services.json` is needed — that's for Firebase. `google_sign_in` 6.
 - **"Sign in failed" / silent fail**: 90% of the time this is the SHA-1 mismatch. Re-run `./gradlew signingReport`, paste the *exact* SHA-1 (uppercase, with colons), wait a couple of minutes for Google to propagate.
 - **"This app is blocked"**: your test account isn't in the consent-screen test-users list. Add it.
 - **"403 storageQuotaExceeded"**: the user's Drive is full. We surface this in the Backup screen.
+
+---
+
+## 3. Release builds
+
+Debug-signed APKs from `flutter run` are fine for development, but to publish or sideload to other devices you need a release keystore + a separate OAuth client.
+
+### a) Generate a release keystore (one-time, NEVER lose this)
+
+```bash
+mkdir -p ~/keystores
+keytool -genkey -v -keystore ~/keystores/xpense-release.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias xpense
+```
+
+⚠ **Back up the `.jks` file and its passwords to a password manager + encrypted cloud storage.** Lose this file = can never update the app on the same install path.
+
+### b) Wire it into the build
+
+Create `android/key.properties` (gitignored):
+
+```properties
+storePassword=YOUR_PASSWORD
+keyPassword=YOUR_PASSWORD
+keyAlias=xpense
+storeFile=/absolute/path/to/xpense-release.jks
+```
+
+The `android/app/build.gradle.kts` in this repo already loads `key.properties` if present, enables R8 + resource shrinking, and signs the `release` build type with it. If the file is missing, it falls back to debug signing so CI / fresh clones still build.
+
+### c) Register the release SHA-1 with Google Cloud
+
+```bash
+cd android && ./gradlew signingReport   # copy the "Variant: release" SHA-1
+```
+
+In Google Cloud Console → **APIs & Services → Credentials** → **+ Create credentials → OAuth client ID**:
+- Type: **Android**
+- Name: `Xpense Tracker Android (release)`
+- Package name: `com.example.xpense_traker`
+- SHA-1: the release fingerprint you just copied
+
+You'll end up with **two** OAuth clients (debug + release) sharing the same package name. That's correct — Google Sign-In matches by `(package + SHA-1)` at runtime and routes each build to the right client.
+
+Wait ~5 minutes after saving for propagation.
+
+### d) Build
+
+```bash
+flutter clean && flutter pub get
+flutter build apk --release --split-per-abi \
+  --obfuscate --split-debug-info=build/symbols/v1.0.0
+```
+
+Outputs three APKs in `build/app/outputs/flutter-apk/`. Ship `app-arm64-v8a-release.apk` to ~95 % of users.
+
+For Play Store, use `flutter build appbundle --release ...` instead. Play re-signs the bundle with its own "App Signing" key — you'll need to register **that** SHA-1 (visible in Play Console → App integrity, after the first upload) as a **third** OAuth client.
+
+### e) Always archive
+
+Each release: keep the matching `build/symbols/<version>` folder, the APK files, and a note of the git commit hash. Without the symbols, obfuscated crash reports from that build can never be decoded.

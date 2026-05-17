@@ -9,13 +9,17 @@ Built with Flutter, Riverpod, and Drift. Designed around a strict black-and-whit
 ## Features
 
 - **Three record types** — expense, income, and loan-given (with expected return date, mark-as-returned flow).
-- **Available balance** computed live as `income − expense − outstanding loans`.
+- **Available balance** computed live as `income − expense − outstanding loans`. Numbers tween smoothly between changes.
 - **Records list** grouped by day with swipe-to-delete and filters (All / Income / Expense).
+- **Date-range filtering** — 1D / 1W / 1M / 1Y chips plus a year-picker dropdown that walks from the current year back to your earliest record. Applies to both Records and Loans.
 - **Loans tab** with Outstanding / Returned sections, overdue indicators, and one-tap "Mark returned".
 - **10 currencies** — PKR, USD, EUR, GBP, INR, AED, SAR, CAD, AUD, JPY. Display-only switch; data stays intact.
-- **Light, dark, and system themes** with instant in-app switching.
+- **Light, dark, and system themes** with crossfade transitions.
+- **Personalized greeting** — set a display name (auto-picked from your Google account when you connect Drive backup, editable from the Backup page).
 - **Onboarding** with line-art illustrations on first launch.
 - **Google Drive backup (optional)** — backs up the SQLite database to a private app-data folder only this app can see. Wi-Fi-only toggle. Auto-restore prompt after sign-in on a fresh install.
+- **Polished motion** — gentle crossfades on tab switches and async loaders, fade-up staggered cards, animated money values, AnimatedSize on conditional form fields. No bouncy springs, no distractions.
+- **Traditional Android back-button** — walks back through tab history; press back again on Home to exit.
 - **Offline-first**: the app makes no network calls until the user explicitly opts in to backup.
 
 ---
@@ -39,7 +43,13 @@ Built with Flutter, Riverpod, and Drift. Designed around a strict black-and-whit
 
 ---
 
-## Getting started
+## Download
+
+Pre-built APKs are attached to each [GitHub release](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases). Grab `xpense-tracker-<version>-arm64-v8a.apk` for any modern Android phone (~21 MB).
+
+To install: enable **Install from unknown sources** for your browser / file manager, open the APK, install. Google Drive backup is opt-in — the app works fully offline.
+
+## Getting started (from source)
 
 ### Prerequisites
 - Flutter SDK 3.11+
@@ -60,6 +70,15 @@ That's it — the app is fully usable offline.
 ### (Optional) Enable Google Drive backup
 
 The backup feature requires a one-time OAuth client setup in Google Cloud Console. See [SETUP.md](SETUP.md) for the step-by-step.
+
+### Building a release APK
+
+See [SETUP.md → Release builds](SETUP.md#3-release-builds) for keystore + signing setup. TL;DR once configured:
+
+```bash
+flutter build apk --release --split-per-abi \
+  --obfuscate --split-debug-info=build/symbols/<version>
+```
 
 ---
 
@@ -96,9 +115,13 @@ assets/illustrations/         SVGs for onboarding & empty states
 
 ## Roadmap
 
+- [x] Date-range filter on Records & Loans
+- [x] Display name & personalized greeting
+- [x] Traditional Android back-button behavior
+- [x] Motion polish across the app
 - [ ] Charts (monthly trend, type breakdown)
 - [ ] CSV export / share
-- [ ] Search + date-range filter on Records
+- [ ] Text search on Records
 - [ ] Recurring records
 - [ ] Multiple wallets / accounts
 - [ ] iOS support
