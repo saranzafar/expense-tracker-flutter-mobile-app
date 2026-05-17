@@ -67,9 +67,8 @@ class HomePage extends ConsumerWidget {
                     style: AppTextStyles.title.copyWith(color: context.ink)),
                 stats.maybeWhen(
                   data: (_) => TextButton(
-                      onPressed: () => ref
-                          .read(shellTabProvider.notifier)
-                          .state = 1,
+                      onPressed: () =>
+                          ref.read(shellNavProvider.notifier).goTo(1),
                       child: Text('See all',
                           style: AppTextStyles.caption
                               .copyWith(color: context.ink))),

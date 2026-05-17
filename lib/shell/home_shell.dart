@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme.dart';
@@ -9,12 +10,49 @@ import '../features/records/ui/records_list_page.dart';
 import '../features/settings/ui/settings_page.dart';
 import '../data/database.dart';
 
-/// Index of the currently-active bottom-nav tab.
-/// 0 = Home, 1 = Records, 2 = Loans, 3 = Settings.
-final shellTabProvider = StateProvider<int>((_) => 0);
+/// State for the bottom-nav: current tab + history stack of previously
+/// visited tabs (most recent at the end; does NOT include `current`).
+class ShellNavState {
+  final int current;
+  final List<int> history;
+  const ShellNavState({this.current = 0, this.history = const []});
+}
 
-class HomeShell extends ConsumerWidget {
+class ShellNavController extends Notifier<ShellNavState> {
+  @override
+  ShellNavState build() => const ShellNavState();
+
+  void goTo(int index) {
+    if (index == state.current) return;
+    final newHistory = [...state.history]..remove(index);
+    newHistory.add(state.current);
+    state = ShellNavState(current: index, history: newHistory);
+  }
+
+  /// Returns true if a previous tab was restored (back consumed).
+  bool popTab() {
+    if (state.history.isEmpty) return false;
+    final newHistory = [...state.history];
+    final prev = newHistory.removeLast();
+    state = ShellNavState(current: prev, history: newHistory);
+    return true;
+  }
+}
+
+final shellNavProvider =
+    NotifierProvider<ShellNavController, ShellNavState>(
+  ShellNavController.new,
+);
+
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
+
+  @override
+  ConsumerState<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends ConsumerState<HomeShell> {
+  bool _exitArmed = false;
 
   static const _pages = <Widget>[
     HomePage(),
@@ -31,25 +69,49 @@ class HomeShell extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final index = ref.watch(shellTabProvider);
-    return Scaffold(
-      extendBody: true,
-      body: _pages[index],
-      floatingActionButton: SizedBox(
-        height: 64,
-        width: 64,
-        child: FloatingActionButton(
-          onPressed: () => _openAddSheet(context),
-          tooltip: 'Add record',
-          child: const Icon(Icons.add, size: 28),
+  Widget build(BuildContext context) {
+    final index = ref.watch(shellNavProvider).current;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final nav = ref.read(shellNavProvider.notifier);
+        if (nav.popTab()) return;
+        if (_exitArmed) {
+          await SystemNavigator.pop();
+          return;
+        }
+        _exitArmed = true;
+        final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+        messenger
+            .showSnackBar(const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
+            ))
+            .closed
+            .then((_) {
+          if (mounted) _exitArmed = false;
+        });
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: _pages[index],
+        floatingActionButton: SizedBox(
+          height: 64,
+          width: 64,
+          child: FloatingActionButton(
+            onPressed: () => _openAddSheet(context),
+            tooltip: 'Add record',
+            child: const Icon(Icons.add, size: 28),
+          ),
         ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _BottomBar(
-        items: _items,
-        index: index,
-        onTap: (i) => ref.read(shellTabProvider.notifier).state = i,
+        floatingActionButtonLocation:
+            FloatingActionButtonLocation.centerDocked,
+        bottomNavigationBar: _BottomBar(
+          items: _items,
+          index: index,
+          onTap: (i) => ref.read(shellNavProvider.notifier).goTo(i),
+        ),
       ),
     );
   }
