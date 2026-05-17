@@ -21,6 +21,8 @@ class HomePage extends ConsumerWidget {
     final stats = ref.watch(dashboardStatsProvider);
     final recent = ref.watch(recentRecordsProvider);
     final currency = ref.watch(currencyProvider);
+    final name = ref.watch(displayNameProvider);
+    final greeting = name.isEmpty ? 'Hello there' : 'Hi, $name';
 
     return Scaffold(
       body: SafeArea(
@@ -34,9 +36,17 @@ class HomePage extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Hello there',
+                      XSwitcher(
+                        duration: AppMotion.fast,
+                        child: Text(
+                          greeting,
+                          key: ValueKey(greeting),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.caption
-                              .copyWith(color: context.inkMuted)),
+                              .copyWith(color: context.inkMuted),
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text('Your money',
                           style: AppTextStyles.headline
@@ -352,21 +362,23 @@ class _BalanceCardSkeleton extends StatelessWidget {
   }
 }
 
-class _OutstandingCard extends StatelessWidget {
+class _OutstandingCard extends ConsumerWidget {
   const _OutstandingCard(
       {super.key, required this.stats, required this.currency});
   final DashboardStats stats;
   final CurrencyOption currency;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.greenSoft,
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Material(
+      color: AppColors.greenSoft,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
         borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
+        onTap: () => ref.read(shellNavProvider.notifier).goTo(2),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
         children: [
           Container(
             height: 40,
@@ -399,6 +411,8 @@ class _OutstandingCard extends StatelessWidget {
           ),
           Icon(Icons.chevron_right, color: context.inkSubtle),
         ],
+      ),
+        ),
       ),
     );
   }

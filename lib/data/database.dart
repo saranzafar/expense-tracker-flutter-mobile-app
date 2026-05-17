@@ -101,6 +101,8 @@ class AppDatabase extends _$AppDatabase {
     RecordType? type,
     Set<RecordType>? typesIn,
     bool? loanReturned,
+    DateTime? from,
+    DateTime? to,
     int? limit,
   }) {
     final q = select(records);
@@ -111,12 +113,27 @@ class AppDatabase extends _$AppDatabase {
     if (loanReturned != null) {
       q.where((r) => r.returned.equals(loanReturned));
     }
+    if (from != null) {
+      q.where((r) => r.occurredAt.isBiggerOrEqualValue(from));
+    }
+    if (to != null) {
+      q.where((r) => r.occurredAt.isSmallerOrEqualValue(to));
+    }
     q.orderBy([
       (r) => OrderingTerm.desc(r.occurredAt),
       (r) => OrderingTerm.desc(r.createdAt),
     ]);
     if (limit != null) q.limit(limit);
     return q.watch();
+  }
+
+  Future<int?> earliestRecordYear() async {
+    final q = selectOnly(records)
+      ..addColumns([records.occurredAt.min()])
+      ..limit(1);
+    final row = await q.getSingleOrNull();
+    final v = row?.read(records.occurredAt.min());
+    return v?.year;
   }
 
   Future<void> upsertRecord(RecordsCompanion data) =>

@@ -6,6 +6,7 @@ import '../core/currency.dart';
 
 const _kThemeMode = 'theme_mode';
 const _kCurrencyCode = 'currency_code';
+const _kDisplayName = 'display_name';
 
 class SettingsRepo {
   Future<ThemeMode> readThemeMode() async {
@@ -26,6 +27,16 @@ class SettingsRepo {
   Future<void> writeCurrency(String code) async {
     final p = await SharedPreferences.getInstance();
     await p.setString(_kCurrencyCode, code);
+  }
+
+  Future<String> readDisplayName() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kDisplayName) ?? '';
+  }
+
+  Future<void> writeDisplayName(String name) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kDisplayName, name);
   }
 }
 
@@ -78,3 +89,24 @@ class CurrencyNotifier extends Notifier<CurrencyOption> {
 
 final currencyProvider =
     NotifierProvider<CurrencyNotifier, CurrencyOption>(CurrencyNotifier.new);
+
+class DisplayNameNotifier extends Notifier<String> {
+  @override
+  String build() => ''; // overridden in main()
+
+  Future<void> set(String name) async {
+    state = name;
+    await ref.read(settingsRepoProvider).writeDisplayName(name);
+  }
+
+  /// Only fills the name if it's currently empty. Used after Google sign-in.
+  Future<void> setFromGoogle(String? googleName) async {
+    if (state.isNotEmpty) return;
+    final n = (googleName ?? '').trim();
+    if (n.isEmpty) return;
+    await set(n);
+  }
+}
+
+final displayNameProvider =
+    NotifierProvider<DisplayNameNotifier, String>(DisplayNameNotifier.new);

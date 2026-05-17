@@ -12,6 +12,7 @@ void main() async {
   final backupRepo = BackupPrefsRepo();
   final themeMode = await settingsRepo.readThemeMode();
   final currency = await settingsRepo.readCurrency();
+  final displayName = await settingsRepo.readDisplayName();
   final backupPrefs = await backupRepo.read();
 
   runApp(
@@ -19,12 +20,21 @@ void main() async {
       overrides: [
         themeModeProvider.overrideWith(() => _PrefilledThemeMode(themeMode)),
         currencyProvider.overrideWith(() => _PrefilledCurrency(currency)),
+        displayNameProvider
+            .overrideWith(() => _PrefilledDisplayName(displayName)),
         backupPrefsProvider
             .overrideWith(() => _PrefilledBackupPrefs(backupPrefs)),
       ],
       child: const XpenseApp(),
     ),
   );
+}
+
+class _PrefilledDisplayName extends DisplayNameNotifier {
+  _PrefilledDisplayName(this.initial);
+  final String initial;
+  @override
+  String build() => initial;
 }
 
 class _PrefilledThemeMode extends ThemeModeNotifier {

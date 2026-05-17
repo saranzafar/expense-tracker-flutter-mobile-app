@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 
+import '../../../data/settings_repo.dart';
 import 'backup_prefs.dart';
 
 class GoogleSignInFailure implements Exception {
@@ -38,7 +39,11 @@ class GoogleAuthNotifier extends Notifier<GoogleSignInAccount?> {
     try {
       final gs = ref.read(googleSignInProvider);
       final acc = await gs.signInSilently();
-      if (acc != null) state = acc;
+      if (acc != null) {
+        state = acc;
+        // ignore: discarded_futures
+        ref.read(displayNameProvider.notifier).setFromGoogle(acc.displayName);
+      }
     } catch (_) {
       // ignore — no network or revoked
     }
@@ -48,6 +53,10 @@ class GoogleAuthNotifier extends Notifier<GoogleSignInAccount?> {
     try {
       final acc = await ref.read(googleSignInProvider).signIn();
       state = acc;
+      if (acc != null) {
+        // ignore: discarded_futures
+        ref.read(displayNameProvider.notifier).setFromGoogle(acc.displayName);
+      }
       return acc;
     } on PlatformException catch (e) {
       debugPrint('[google_auth] PlatformException ${e.code}: ${e.message}');

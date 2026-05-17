@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/providers.dart';
+import '../../../data/settings_repo.dart';
 import '../data/backup_prefs.dart';
 import '../data/backup_repo.dart';
 import '../data/drive_client.dart';
@@ -33,6 +34,10 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
+            _SectionLabel('Display name'),
+            const SizedBox(height: 8),
+            const _DisplayNameCard(),
+            const SizedBox(height: 20),
             _SectionLabel('Account'),
             const SizedBox(height: 8),
             _AccountCard(
@@ -583,6 +588,92 @@ class _RestoreSheet extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DisplayNameCard extends ConsumerStatefulWidget {
+  const _DisplayNameCard();
+
+  @override
+  ConsumerState<_DisplayNameCard> createState() => _DisplayNameCardState();
+}
+
+class _DisplayNameCardState extends ConsumerState<_DisplayNameCard> {
+  late final TextEditingController _controller;
+  String _saved = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _saved = ref.read(displayNameProvider);
+    _controller = TextEditingController(text: _saved);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<String>(displayNameProvider, (prev, next) {
+      if (next != _saved && _controller.text == _saved) {
+        _saved = next;
+        _controller.text = next;
+        _controller.selection = TextSelection.collapsed(offset: next.length);
+      }
+    });
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        border: Border.all(color: context.hairline),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _controller,
+            decoration: const InputDecoration(
+              hintText: 'Your name',
+            ),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _controller,
+              builder: (_, v, _) {
+                final dirty = v.text.trim() != _saved;
+                return FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.green,
+                    foregroundColor: AppColors.ink,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                  ),
+                  onPressed: dirty ? _save : null,
+                  child: const Text('Save'),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    final name = _controller.text.trim();
+    await ref.read(displayNameProvider.notifier).set(name);
+    setState(() => _saved = name);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Saved'), duration: Duration(seconds: 1)),
     );
   }
 }

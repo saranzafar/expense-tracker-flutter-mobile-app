@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/date_range.dart';
 import '../../../core/formatters.dart';
 import '../../../core/motion.dart';
 import '../../../core/theme.dart';
@@ -9,6 +10,7 @@ import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
 import '../../records/ui/record_form_page.dart';
+import '../../shared/date_range_bar.dart';
 
 class LoansPage extends ConsumerStatefulWidget {
   const LoansPage({super.key});
@@ -20,6 +22,7 @@ class LoansPage extends ConsumerStatefulWidget {
 class _LoansPageState extends ConsumerState<LoansPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
+  DateRangeFilter _range = DateRangeFilter.month;
 
   @override
   void initState() {
@@ -35,8 +38,8 @@ class _LoansPageState extends ConsumerState<LoansPage>
 
   @override
   Widget build(BuildContext context) {
-    final outstanding = ref.watch(outstandingLoansProvider);
-    final returned = ref.watch(returnedLoansProvider);
+    final outstanding = ref.watch(outstandingLoansProvider(_range));
+    final returned = ref.watch(returnedLoansProvider(_range));
 
     return Scaffold(
       appBar: AppBar(
@@ -60,11 +63,21 @@ class _LoansPageState extends ConsumerState<LoansPage>
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tab,
+      body: Column(
         children: [
-          _LoansList(loans: outstanding, isOutstanding: true),
-          _LoansList(loans: returned, isOutstanding: false),
+          DateRangeBar(
+            value: _range,
+            onChanged: (r) => setState(() => _range = r),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                _LoansList(loans: outstanding, isOutstanding: true),
+                _LoansList(loans: returned, isOutstanding: false),
+              ],
+            ),
+          ),
         ],
       ),
     );

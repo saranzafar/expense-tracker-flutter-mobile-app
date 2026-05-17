@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/date_range.dart';
 import '../../../core/formatters.dart';
 import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
+import '../../shared/date_range_bar.dart';
 import '../widgets/record_tile.dart';
 
 class RecordsListPage extends ConsumerStatefulWidget {
@@ -18,10 +20,12 @@ class RecordsListPage extends ConsumerStatefulWidget {
 
 class _RecordsListPageState extends ConsumerState<RecordsListPage> {
   RecordsFilter _filter = RecordsFilter.all;
+  DateRangeFilter _range = DateRangeFilter.month;
 
   @override
   Widget build(BuildContext context) {
-    final records = ref.watch(filteredRecordsProvider(_filter));
+    final records = ref.watch(filteredRecordsProvider(
+        RecordsQuery(type: _filter, range: _range)));
     final currency = ref.watch(currencyProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Records')),
@@ -30,6 +34,10 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            DateRangeBar(
+              value: _range,
+              onChanged: (r) => setState(() => _range = r),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
               child: Row(

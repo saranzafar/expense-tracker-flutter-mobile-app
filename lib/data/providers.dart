@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/date_range.dart';
 import 'database.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -27,24 +28,60 @@ class RecordsFilter {
 
   @override
   bool operator ==(Object other) =>
-      other is RecordsFilter && other.types.length == types.length &&
+      other is RecordsFilter &&
+      other.types.length == types.length &&
       other.types.containsAll(types);
 
   @override
   int get hashCode => Object.hashAll(types);
 }
 
+class RecordsQuery {
+  final RecordsFilter type;
+  final DateRangeFilter range;
+  const RecordsQuery({required this.type, required this.range});
+
+  @override
+  bool operator ==(Object other) =>
+      other is RecordsQuery && other.type == type && other.range == range;
+
+  @override
+  int get hashCode => Object.hash(type, range);
+}
+
 final filteredRecordsProvider =
-    StreamProvider.family<List<RecordRow>, RecordsFilter>((ref, f) {
-  return ref.watch(databaseProvider).watchRecords(typesIn: f.types);
+    StreamProvider.family<List<RecordRow>, RecordsQuery>((ref, q) {
+  final r = q.range.resolve(DateTime.now());
+  return ref.watch(databaseProvider).watchRecords(
+        typesIn: q.type.types,
+        from: r.start,
+        to: r.end,
+      );
 });
 
-final outstandingLoansProvider = StreamProvider<List<RecordRow>>((ref) {
+final outstandingLoansProvider =
+    StreamProvider.family<List<RecordRow>, DateRangeFilter>((ref, range) {
+  final r = range.resolve(DateTime.now());
   return ref.watch(databaseProvider).watchRecords(
-      type: RecordType.loanGiven, loanReturned: false);
+        type: RecordType.loanGiven,
+        loanReturned: false,
+        from: r.start,
+        to: r.end,
+      );
 });
 
-final returnedLoansProvider = StreamProvider<List<RecordRow>>((ref) {
+final returnedLoansProvider =
+    StreamProvider.family<List<RecordRow>, DateRangeFilter>((ref, range) {
+  final r = range.resolve(DateTime.now());
   return ref.watch(databaseProvider).watchRecords(
-      type: RecordType.loanGiven, loanReturned: true);
+        type: RecordType.loanGiven,
+        loanReturned: true,
+        from: r.start,
+        to: r.end,
+      );
+});
+
+final earliestRecordYearProvider = FutureProvider<int>((ref) async {
+  final y = await ref.watch(databaseProvider).earliestRecordYear();
+  return y ?? DateTime.now().year;
 });
