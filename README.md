@@ -1,7 +1,6 @@
 # Xpense Tracker
 
 A clean, offline-first personal finance app for Android. Track expenses, income, and money you've lent — with optional, private Google Drive backup.
-
 Built with Flutter, Riverpod, and Drift. Designed around a strict black-and-white interface with sparing lime-green accents.
 
 ---
