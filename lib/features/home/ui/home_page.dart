@@ -596,7 +596,7 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
                 child: CircularProgressIndicator(
                     color: AppColors.green, strokeWidth: 2),
               ),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (e, _) => const SizedBox.shrink(),
               data: (points) {
                 final allZero = points.every(
                     (p) => p.income == 0 && p.expense == 0);
@@ -702,6 +702,12 @@ class _LineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Extract theme colors here (build phase) — fl_chart callbacks fire
+    // during paint and must NOT call context.dependOnInheritedWidgetOfExactType,
+    // otherwise Flutter throws '_dependents.isEmpty is not true'.
+    final inkMuted = context.inkMuted;
+    final inkColor = context.ink;
+
     final incomeSpots = <FlSpot>[];
     final expenseSpots = <FlSpot>[];
     for (var i = 0; i < points.length; i++) {
@@ -805,7 +811,7 @@ class _LineChart extends StatelessWidget {
                   child: Text(
                     label,
                     style: AppTextStyles.caption.copyWith(
-                        color: context.inkMuted, fontSize: 10),
+                        color: inkMuted, fontSize: 10),
                   ),
                 );
               },
@@ -814,7 +820,7 @@ class _LineChart extends StatelessWidget {
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (_) => context.ink,
+            getTooltipColor: (_) => inkColor,
             getTooltipItems: (spots) => spots.map((s) {
               final isIncome = s.barIndex == 0;
               final amount = (s.y * 100).round();
