@@ -45,10 +45,12 @@ class RecordsQuery {
   final RecordsFilter type;
   final DateRangeFilter range;
   final String? categoryId;
+  final int limit;
   const RecordsQuery({
     required this.type,
     required this.range,
     this.categoryId,
+    this.limit = 50,
   });
 
   @override
@@ -56,10 +58,11 @@ class RecordsQuery {
       other is RecordsQuery &&
       other.type == type &&
       other.range == range &&
-      other.categoryId == categoryId;
+      other.categoryId == categoryId &&
+      other.limit == limit;
 
   @override
-  int get hashCode => Object.hash(type, range, categoryId);
+  int get hashCode => Object.hash(type, range, categoryId, limit);
 }
 
 final filteredRecordsProvider =
@@ -70,6 +73,7 @@ final filteredRecordsProvider =
         from: r.start,
         to: r.end,
         categoryId: q.categoryId,
+        limit: q.limit,
       );
 });
 

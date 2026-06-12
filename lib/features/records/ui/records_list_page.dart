@@ -29,6 +29,37 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
   DateRangeFilter _range = DateRangeFilter.month;
   String? _selectedCategoryId;
 
+  // Pagination
+  static const _pageSize = 50;
+  int _limit = _pageSize;
+  // Tracks last emitted count so the scroll listener can decide whether to
+  // fetch more without needing a setState (safe direct mutation in build).
+  int _lastCount = 0;
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Only trigger when the last batch was full — if fewer came back we're done.
+    if (_lastCount < _limit) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 400) {
+      setState(() => _limit += _pageSize);
+    }
+  }
+
   bool get _hasActiveFilters =>
       _filter != RecordsFilter.all ||
       _selectedCategoryId != null ||
@@ -44,17 +75,18 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
         initialCategoryId: _selectedCategoryId,
         initialRange: _range,
         onChanged: (type, categoryId, range) {
-          // Live update — list rebuilds behind the sheet immediately.
           setState(() {
             _filter = type;
             _selectedCategoryId = categoryId;
             _range = range;
+            _limit = _pageSize; // reset pagination on filter change
           });
         },
         onReset: () => setState(() {
           _filter = RecordsFilter.all;
           _selectedCategoryId = null;
           _range = DateRangeFilter.month;
+          _limit = _pageSize; // reset pagination on filter reset
         }),
       ),
     );
@@ -67,6 +99,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
       type: _filter,
       range: _range,
       categoryId: _selectedCategoryId,
+      limit: _limit,
     )));
     final currency = ref.watch(currencyProvider);
 
@@ -107,12 +140,16 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
         bottom: false,
         child: XSwitcher(
           child: records.when(
+            skipLoadingOnReload: true,
             loading: () => const Center(
                 key: ValueKey('rec-loading'),
                 child: CircularProgressIndicator()),
             error: (e, _) =>
                 Center(key: const ValueKey('rec-error'), child: Text('$e')),
             data: (items) {
+              // Track count for scroll listener (safe direct mutation — no rebuild).
+              _lastCount = items.length;
+
               if (items.isEmpty) {
                 return Center(
                   key: const ValueKey('rec-empty'),
@@ -137,12 +174,40 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
                   ),
                 );
               }
+
               final groups = _groupByDay(items);
+              final mayHaveMore = items.length >= _limit;
+
               return ListView.builder(
                 key: const ValueKey('rec-list'),
+                controller: _scrollController,
                 padding: const EdgeInsets.only(bottom: 120),
-                itemCount: groups.length,
+                // +1 for the footer row
+                itemCount: groups.length + 1,
                 itemBuilder: (_, i) {
+                  // Footer
+                  if (i == groups.length) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: mayHaveMore
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.green,
+                                ),
+                              )
+                            : Text(
+                                '${items.length} record${items.length == 1 ? '' : 's'} total',
+                                style: AppTextStyles.caption
+                                    .copyWith(color: context.inkSubtle),
+                              ),
+                      ),
+                    );
+                  }
+
                   final g = groups[i];
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
