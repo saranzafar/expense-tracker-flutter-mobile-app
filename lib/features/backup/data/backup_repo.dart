@@ -131,24 +131,24 @@ class BackupRepo {
     }
   }
 
-  Future<void> autoBackupIfDue() async {
+  Future<BackupResult?> autoBackupIfDue() async {
     final prefs = _ref.read(backupPrefsProvider);
-    if (!prefs.enabled) return;
+    if (!prefs.enabled) return null;
     final account = _ref.read(googleAuthProvider);
-    if (account == null) return;
+    if (account == null) return null;
     final last = prefs.lastBackupAt;
     if (last != null &&
         DateTime.now().difference(last) < const Duration(hours: 24)) {
-      return;
+      return null;
     }
     if (prefs.wifiOnly) {
       final list = await Connectivity().checkConnectivity();
-      if (!list.contains(ConnectivityResult.wifi)) return;
+      if (!list.contains(ConnectivityResult.wifi)) return null;
     }
     try {
-      await backupNow();
+      return await backupNow();
     } catch (_) {
-      // never crash app from auto-backup
+      return null;
     }
   }
 }

@@ -28,8 +28,10 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
   late DateTime _occurredAt;
   DateTime? _expectedReturnAt;
   late RecordType _type;
+  String? _selectedCategoryId;
 
-  bool get _isLoan => _type == RecordType.loanGiven;
+  bool get _isLoan =>
+      _type == RecordType.loanGiven || _type == RecordType.loanTaken;
   bool get _isEdit => widget.existing != null;
 
   @override
@@ -43,6 +45,7 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
     _counterparty = TextEditingController(text: e?.counterparty ?? '');
     _occurredAt = e?.occurredAt ?? DateTime.now();
     _expectedReturnAt = e?.expectedReturnAt;
+    _selectedCategoryId = e?.categoryId;
   }
 
   @override
@@ -61,7 +64,9 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
       case RecordType.income:
         return '$action income';
       case RecordType.loanGiven:
-        return '$action loan';
+        return '$action loan given';
+      case RecordType.loanTaken:
+        return '$action loan taken';
     }
   }
 
@@ -118,7 +123,12 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('To whom', style: captionMuted),
+                        Text(
+                          _type == RecordType.loanTaken
+                              ? 'From whom'
+                              : 'To whom',
+                          style: captionMuted,
+                        ),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _counterparty,
@@ -142,6 +152,26 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
               ),
               maxLines: 2,
             ),
+            AnimatedSize(
+              duration: AppMotion.med,
+              curve: AppMotion.enter,
+              alignment: Alignment.topCenter,
+              child: _type != RecordType.expense
+                  ? const SizedBox(width: double.infinity)
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        Text('Category', style: captionMuted),
+                        const SizedBox(height: 8),
+                        _CategoryPicker(
+                          selected: _selectedCategoryId,
+                          onChanged: (id) =>
+                              setState(() => _selectedCategoryId = id),
+                        ),
+                      ],
+                    ),
+            ),
             const SizedBox(height: 20),
             Text('Date', style: captionMuted),
             const SizedBox(height: 8),
@@ -159,7 +189,12 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: 20),
-                        Text('Expected return date', style: captionMuted),
+                        Text(
+                          _type == RecordType.loanTaken
+                              ? 'Expected repayment date'
+                              : 'Expected return date',
+                          style: captionMuted,
+                        ),
                         const SizedBox(height: 8),
                         _DateField(
                           value: _expectedReturnAt,
@@ -206,6 +241,8 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
       expectedReturnAt: Value(_isLoan ? _expectedReturnAt : null),
       returned: Value(widget.existing?.returned ?? false),
       returnedAt: Value(widget.existing?.returnedAt),
+      categoryId: Value(
+          _type == RecordType.expense ? _selectedCategoryId : null),
     ));
     if (mounted) Navigator.of(context).pop();
   }
@@ -231,6 +268,151 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
     if (ok != true) return;
     await ref.read(databaseProvider).deleteRecord(widget.existing!.id);
     if (mounted) Navigator.of(context).pop();
+  }
+}
+
+class _CategoryPicker extends ConsumerWidget {
+  const _CategoryPicker({required this.selected, required this.onChanged});
+  final String? selected;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cats = ref.watch(categoriesProvider).valueOrNull ?? [];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final cat in cats) ...[
+            _CategoryChip(
+              label: cat.name,
+              isSelected: selected == cat.id,
+              onTap: () => onChanged(selected == cat.id ? null : cat.id),
+            ),
+            const SizedBox(width: 8),
+          ],
+          _AddCategoryChip(
+            categories: cats,
+            onAdded: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        curve: AppMotion.enter,
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? context.ink : Colors.transparent,
+          border: Border.all(
+              color: isSelected ? context.ink : context.hairline),
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: AnimatedDefaultTextStyle(
+          duration: AppMotion.fast,
+          style: AppTextStyles.caption.copyWith(
+            color: isSelected ? context.surface : context.ink,
+            fontWeight: FontWeight.w600,
+          ),
+          child: Text(label),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddCategoryChip extends ConsumerStatefulWidget {
+  const _AddCategoryChip({required this.categories, required this.onAdded});
+  final List<CategoryRow> categories;
+  final ValueChanged<String?> onAdded;
+
+  @override
+  ConsumerState<_AddCategoryChip> createState() => _AddCategoryChipState();
+}
+
+class _AddCategoryChipState extends ConsumerState<_AddCategoryChip> {
+  Future<void> _showDialog() async {
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New category'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(hintText: 'e.g. Food, Transport'),
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.green,
+              foregroundColor: AppColors.ink,
+            ),
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (name == null || name.isEmpty) return;
+    // Check for case-insensitive duplicate
+    final existing = widget.categories.where(
+        (c) => c.name.toLowerCase() == name.toLowerCase());
+    if (existing.isNotEmpty) {
+      widget.onAdded(existing.first.id);
+      return;
+    }
+    final row = await ref.read(databaseProvider).addCategory(name);
+    widget.onAdded(row.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _showDialog,
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: context.hairline),
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add, size: 14, color: context.inkMuted),
+            const SizedBox(width: 4),
+            Text('Add',
+                style: AppTextStyles.caption
+                    .copyWith(color: context.inkMuted)),
+          ],
+        ),
+      ),
+    );
   }
 }
 

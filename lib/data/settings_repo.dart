@@ -7,6 +7,7 @@ import '../core/currency.dart';
 const _kThemeMode = 'theme_mode';
 const _kCurrencyCode = 'currency_code';
 const _kDisplayName = 'display_name';
+const _kBalanceHidden = 'balance_hidden';
 
 class SettingsRepo {
   Future<ThemeMode> readThemeMode() async {
@@ -37,6 +38,16 @@ class SettingsRepo {
   Future<void> writeDisplayName(String name) async {
     final p = await SharedPreferences.getInstance();
     await p.setString(_kDisplayName, name);
+  }
+
+  Future<bool> readBalanceHidden() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getBool(_kBalanceHidden) ?? false;
+  }
+
+  Future<void> writeBalanceHidden(bool hidden) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_kBalanceHidden, hidden);
   }
 }
 
@@ -110,3 +121,16 @@ class DisplayNameNotifier extends Notifier<String> {
 
 final displayNameProvider =
     NotifierProvider<DisplayNameNotifier, String>(DisplayNameNotifier.new);
+
+class BalanceHiddenNotifier extends Notifier<bool> {
+  @override
+  bool build() => false; // overridden in main()
+
+  Future<void> set(bool hidden) async {
+    state = hidden;
+    await ref.read(settingsRepoProvider).writeBalanceHidden(hidden);
+  }
+}
+
+final balanceHiddenProvider =
+    NotifierProvider<BalanceHiddenNotifier, bool>(BalanceHiddenNotifier.new);

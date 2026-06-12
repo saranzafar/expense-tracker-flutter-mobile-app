@@ -1,7 +1,9 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/chart_data.dart';
 import '../../../core/currency.dart';
 import '../../../core/motion.dart';
 import '../../../core/theme.dart';
@@ -22,6 +24,7 @@ class HomePage extends ConsumerWidget {
     final recent = ref.watch(recentRecordsProvider);
     final currency = ref.watch(currencyProvider);
     final name = ref.watch(displayNameProvider);
+    final balanceHidden = ref.watch(balanceHiddenProvider);
     final greeting = name.isEmpty ? 'Hello there' : 'Hi, $name';
 
     return Scaffold(
@@ -67,21 +70,28 @@ class HomePage extends ConsumerWidget {
                 data: (s) => _BalanceCard(
                     key: const ValueKey('balance-data'),
                     stats: s,
-                    currency: currency),
+                    currency: currency,
+                    hidden: balanceHidden,
+                    onToggle: () => ref
+                        .read(balanceHiddenProvider.notifier)
+                        .set(!balanceHidden)),
               ),
             ),
             const SizedBox(height: 16),
             XSwitcher(
               child: stats.maybeWhen(
-                data: (s) => s.outstandingLoanCount == 0
-                    ? const SizedBox.shrink(key: ValueKey('out-empty'))
-                    : _OutstandingCard(
-                        key: const ValueKey('out-card'),
-                        stats: s,
-                        currency: currency),
+                data: (s) =>
+                    s.outstandingLoanCount + s.outstandingBorrowedCount == 0
+                        ? const SizedBox.shrink(key: ValueKey('out-empty'))
+                        : _OutstandingCard(
+                            key: const ValueKey('out-card'),
+                            stats: s,
+                            currency: currency),
                 orElse: () => const SizedBox.shrink(key: ValueKey('out-none')),
               ),
             ),
+            const SizedBox(height: 16),
+            const _ChartCard(),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -134,9 +144,17 @@ class HomePage extends ConsumerWidget {
 }
 
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({super.key, required this.stats, required this.currency});
+  const _BalanceCard({
+    super.key,
+    required this.stats,
+    required this.currency,
+    required this.hidden,
+    required this.onToggle,
+  });
   final DashboardStats stats;
   final CurrencyOption currency;
+  final bool hidden;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +203,21 @@ class _BalanceCard extends StatelessWidget {
                           style:
                               AppTextStyles.caption.copyWith(color: muted)),
                       const Spacer(),
+                      GestureDetector(
+                        onTap: onToggle,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 4),
+                          child: Icon(
+                            hidden
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: muted,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
@@ -200,11 +233,21 @@ class _BalanceCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  AnimatedMoney(
-                    minor: stats.availableBalance,
-                    currency: currency,
-                    style: AppTextStyles.display
-                        .copyWith(color: AppColors.green, fontSize: 38),
+                  XSwitcher(
+                    child: hidden
+                        ? Text(
+                            '••••••',
+                            key: const ValueKey('bal-hidden'),
+                            style: AppTextStyles.display.copyWith(
+                                color: AppColors.green, fontSize: 38),
+                          )
+                        : AnimatedMoney(
+                            key: const ValueKey('bal-shown'),
+                            minor: stats.availableBalance,
+                            currency: currency,
+                            style: AppTextStyles.display
+                                .copyWith(color: AppColors.green, fontSize: 38),
+                          ),
                   ),
                   const SizedBox(height: 20),
                   Container(height: 1, color: hairline),
@@ -221,6 +264,7 @@ class _BalanceCard extends StatelessWidget {
                           mutedColor: muted,
                           subtleColor: subtle,
                           accentDot: true,
+                          hidden: hidden,
                         ),
                       ),
                       Container(width: 1, height: 36, color: hairline),
@@ -235,6 +279,7 @@ class _BalanceCard extends StatelessWidget {
                             valueColor: valueColor,
                             mutedColor: muted,
                             subtleColor: subtle,
+                            hidden: hidden,
                           ),
                         ),
                       ),
@@ -260,6 +305,7 @@ class _MiniStat extends StatelessWidget {
     required this.mutedColor,
     required this.subtleColor,
     this.accentDot = false,
+    this.hidden = false,
   });
   final String label;
   final int minor;
@@ -269,6 +315,7 @@ class _MiniStat extends StatelessWidget {
   final Color mutedColor;
   final Color subtleColor;
   final bool accentDot;
+  final bool hidden;
 
   @override
   Widget build(BuildContext context) {
@@ -284,11 +331,19 @@ class _MiniStat extends StatelessWidget {
               style: AppTextStyles.caption.copyWith(color: mutedColor)),
         ]),
         const SizedBox(height: 4),
-        AnimatedMoney(
-          minor: minor,
-          currency: currency,
-          style: AppTextStyles.title
-              .copyWith(color: valueColor, fontWeight: FontWeight.w700),
+        XSwitcher(
+          child: hidden
+              ? Text('•••',
+                  key: const ValueKey('mini-hidden'),
+                  style: AppTextStyles.title
+                      .copyWith(color: valueColor, fontWeight: FontWeight.w700))
+              : AnimatedMoney(
+                  key: const ValueKey('mini-shown'),
+                  minor: minor,
+                  currency: currency,
+                  style: AppTextStyles.title
+                      .copyWith(color: valueColor, fontWeight: FontWeight.w700),
+                ),
         ),
       ],
     );
@@ -396,16 +451,35 @@ class _OutstandingCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Outstanding loans · ${stats.outstandingLoanCount}',
-                    style: AppTextStyles.caption
-                        .copyWith(color: context.inkMuted)),
-                const SizedBox(height: 2),
-                AnimatedMoney(
-                  minor: stats.outstandingLoanMinor,
-                  currency: currency,
-                  style: AppTextStyles.title.copyWith(
-                      fontWeight: FontWeight.w700, color: context.ink),
-                ),
+                if (stats.outstandingLoanCount > 0) ...[
+                  Text(
+                      'Lent · ${stats.outstandingLoanCount}',
+                      style: AppTextStyles.caption
+                          .copyWith(color: context.inkMuted)),
+                  const SizedBox(height: 2),
+                  AnimatedMoney(
+                    minor: stats.outstandingLoanMinor,
+                    currency: currency,
+                    style: AppTextStyles.title.copyWith(
+                        fontWeight: FontWeight.w700, color: context.ink),
+                  ),
+                ],
+                if (stats.outstandingLoanCount > 0 &&
+                    stats.outstandingBorrowedCount > 0)
+                  const SizedBox(height: 6),
+                if (stats.outstandingBorrowedCount > 0) ...[
+                  Text(
+                      'Borrowed · ${stats.outstandingBorrowedCount}',
+                      style: AppTextStyles.caption
+                          .copyWith(color: context.inkMuted)),
+                  const SizedBox(height: 2),
+                  AnimatedMoney(
+                    minor: stats.outstandingBorrowedMinor,
+                    currency: currency,
+                    style: AppTextStyles.title.copyWith(
+                        fontWeight: FontWeight.w700, color: context.ink),
+                  ),
+                ],
               ],
             ),
           ),
@@ -458,6 +532,303 @@ class _EmptyRecent extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Chart Card ──────────────────────────────────────────────────────────────
+
+class _ChartCard extends ConsumerStatefulWidget {
+  const _ChartCard();
+
+  @override
+  ConsumerState<_ChartCard> createState() => _ChartCardState();
+}
+
+class _ChartCardState extends ConsumerState<_ChartCard> {
+  ChartPeriod _period = ChartPeriod.month;
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = ref.watch(currencyProvider);
+    final chartAsync = ref.watch(chartDataProvider(_period));
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border.all(color: context.hairline),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Overview',
+                  style:
+                      AppTextStyles.title.copyWith(color: context.ink)),
+              const Spacer(),
+              _PeriodChip(
+                label: '1W',
+                selected: _period == ChartPeriod.week,
+                onTap: () => setState(() => _period = ChartPeriod.week),
+              ),
+              const SizedBox(width: 6),
+              _PeriodChip(
+                label: '1M',
+                selected: _period == ChartPeriod.month,
+                onTap: () => setState(() => _period = ChartPeriod.month),
+              ),
+              const SizedBox(width: 6),
+              _PeriodChip(
+                label: '1Y',
+                selected: _period == ChartPeriod.year,
+                onTap: () => setState(() => _period = ChartPeriod.year),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 160,
+            child: chartAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(
+                    color: AppColors.green, strokeWidth: 2),
+              ),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (points) {
+                final allZero = points.every(
+                    (p) => p.income == 0 && p.expense == 0);
+                if (allZero) {
+                  return Center(
+                    child: Text('No data for this period',
+                        style: AppTextStyles.caption
+                            .copyWith(color: context.inkMuted)),
+                  );
+                }
+                return _LineChart(
+                    points: points,
+                    period: _period,
+                    currency: currency);
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _Legend(color: AppColors.green, label: 'Income'),
+              const SizedBox(width: 16),
+              _Legend(color: AppColors.danger, label: 'Expense'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PeriodChip extends StatelessWidget {
+  const _PeriodChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        curve: AppMotion.enter,
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? context.ink : Colors.transparent,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+              color: selected ? context.ink : context.hairline),
+        ),
+        child: AnimatedDefaultTextStyle(
+          duration: AppMotion.fast,
+          style: AppTextStyles.caption.copyWith(
+            color: selected ? context.surface : context.inkMuted,
+            fontWeight: FontWeight.w600,
+          ),
+          child: Text(label),
+        ),
+      ),
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  const _Legend({required this.color, required this.label});
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(label,
+            style: AppTextStyles.caption
+                .copyWith(color: context.inkMuted)),
+      ],
+    );
+  }
+}
+
+class _LineChart extends StatelessWidget {
+  const _LineChart({
+    required this.points,
+    required this.period,
+    required this.currency,
+  });
+  final List<ChartPoint> points;
+  final ChartPeriod period;
+  final CurrencyOption currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final incomeSpots = <FlSpot>[];
+    final expenseSpots = <FlSpot>[];
+    for (var i = 0; i < points.length; i++) {
+      incomeSpots.add(FlSpot(i.toDouble(), points[i].income / 100));
+      expenseSpots.add(FlSpot(i.toDouble(), points[i].expense / 100));
+    }
+
+    final maxVal = points.fold<double>(0.0, (m, p) {
+      final v = p.income > p.expense ? p.income : p.expense;
+      return v > m ? v : m;
+    }) /
+        100;
+    final maxY = maxVal == 0 ? 100.0 : (maxVal * 1.25).ceilToDouble();
+
+    String bottomLabel(int idx) {
+      if (idx < 0 || idx >= points.length) return '';
+      final d = points[idx].date;
+      switch (period) {
+        case ChartPeriod.week:
+          const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          return days[d.weekday - 1];
+        case ChartPeriod.month:
+          // Show every 5th label
+          if (idx % 5 != 0) return '';
+          return '${d.day}';
+        case ChartPeriod.year:
+          const months = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+          ];
+          return months[d.month - 1];
+      }
+    }
+
+    return LineChart(
+      LineChartData(
+        minY: 0,
+        maxY: maxY,
+        clipData: const FlClipData.all(),
+        lineBarsData: [
+          // Income
+          LineChartBarData(
+            spots: incomeSpots,
+            isCurved: true,
+            preventCurveOverShooting: true,
+            color: AppColors.green,
+            barWidth: 2,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.green.withValues(alpha: 0.15),
+                  AppColors.green.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+          // Expense
+          LineChartBarData(
+            spots: expenseSpots,
+            isCurved: true,
+            preventCurveOverShooting: true,
+            color: AppColors.danger,
+            barWidth: 2,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.danger.withValues(alpha: 0.06),
+                  AppColors.danger.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        ],
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false)),
+          leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: 1,
+              reservedSize: 24,
+              getTitlesWidget: (value, meta) {
+                final label = bottomLabel(value.toInt());
+                if (label.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    label,
+                    style: AppTextStyles.caption.copyWith(
+                        color: context.inkMuted, fontSize: 10),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (_) => context.ink,
+            getTooltipItems: (spots) => spots.map((s) {
+              final isIncome = s.barIndex == 0;
+              final amount = (s.y * 100).round();
+              return LineTooltipItem(
+                '${isIncome ? '↑' : '↓'} ${formatMoney(amount, currency)}',
+                AppTextStyles.caption.copyWith(
+                  color: isIncome ? AppColors.green : AppColors.danger,
+                  fontWeight: FontWeight.w700,
+                ),
+              );
+            }).toList(),
+          ),
+          handleBuiltInTouches: true,
+        ),
       ),
     );
   }

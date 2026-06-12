@@ -10,7 +10,18 @@ part 'database.g.dart';
 
 const _uuid = Uuid();
 
-enum RecordType { expense, income, loanGiven }
+enum RecordType { expense, income, loanGiven, loanTaken }
+
+@DataClassName('CategoryRow')
+class Categories extends Table {
+  TextColumn get id => text().clientDefault(() => _uuid.v4())();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
 
 @DataClassName('RecordRow')
 class Records extends Table {
@@ -26,6 +37,7 @@ class Records extends Table {
   DateTimeColumn get expectedReturnAt => dateTime().nullable()();
   BoolColumn get returned => boolean().withDefault(const Constant(false))();
   DateTimeColumn get returnedAt => dateTime().nullable()();
+  TextColumn get categoryId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -35,39 +47,45 @@ class DashboardStats {
   final int incomeMinor;
   final int expenseMinor;
   final int outstandingLoanMinor;
+  final int outstandingBorrowedMinor;
   final int monthIncomeMinor;
   final int monthExpenseMinor;
   final int outstandingLoanCount;
+  final int outstandingBorrowedCount;
 
   const DashboardStats({
     required this.incomeMinor,
     required this.expenseMinor,
     required this.outstandingLoanMinor,
+    required this.outstandingBorrowedMinor,
     required this.monthIncomeMinor,
     required this.monthExpenseMinor,
     required this.outstandingLoanCount,
+    required this.outstandingBorrowedCount,
   });
 
   int get availableBalance =>
-      incomeMinor - expenseMinor - outstandingLoanMinor;
+      incomeMinor - expenseMinor - outstandingLoanMinor - outstandingBorrowedMinor;
 
   static const empty = DashboardStats(
     incomeMinor: 0,
     expenseMinor: 0,
     outstandingLoanMinor: 0,
+    outstandingBorrowedMinor: 0,
     monthIncomeMinor: 0,
     monthExpenseMinor: 0,
     outstandingLoanCount: 0,
+    outstandingBorrowedCount: 0,
   );
 }
 
-@DriftDatabase(tables: [Records])
+@DriftDatabase(tables: [Records, Categories])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -78,6 +96,10 @@ class AppDatabase extends _$AppDatabase {
             await customStatement('DROP TABLE IF EXISTS transactions');
             await customStatement('DROP TABLE IF EXISTS categories');
             await m.createTable(records);
+          }
+          if (from < 3) {
+            await m.addColumn(records, records.categoryId);
+            await m.createTable(categories);
           }
         },
       );
@@ -104,6 +126,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime? from,
     DateTime? to,
     int? limit,
+    String? categoryId,
   }) {
     final q = select(records);
     if (type != null) q.where((r) => r.type.equalsValue(type));
@@ -118,6 +141,9 @@ class AppDatabase extends _$AppDatabase {
     }
     if (to != null) {
       q.where((r) => r.occurredAt.isSmallerOrEqualValue(to));
+    }
+    if (categoryId != null) {
+      q.where((r) => r.categoryId.equals(categoryId));
     }
     q.orderBy([
       (r) => OrderingTerm.desc(r.occurredAt),
@@ -151,6 +177,17 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Stream<List<CategoryRow>> watchCategories() =>
+      (select(categories)..orderBy([(c) => OrderingTerm.asc(c.name)])).watch();
+
+  Future<CategoryRow> addCategory(String name) async {
+    final id = _uuid.v4();
+    await into(categories).insert(
+      CategoriesCompanion.insert(id: Value(id), name: name),
+    );
+    return (select(categories)..where((c) => c.id.equals(id))).getSingle();
+  }
+
   Stream<DashboardStats> watchStats() {
     return select(records).watch().map((rows) {
       final now = DateTime.now();
@@ -158,6 +195,7 @@ class AppDatabase extends _$AppDatabase {
       final nextMonth = DateTime(now.year, now.month + 1, 1);
 
       int income = 0, expense = 0, outLoan = 0, outCount = 0;
+      int outBorrowed = 0, outBorrowedCount = 0;
       int monthInc = 0, monthExp = 0;
       for (final r in rows) {
         switch (r.type) {
@@ -181,15 +219,23 @@ class AppDatabase extends _$AppDatabase {
               outCount += 1;
             }
             break;
+          case RecordType.loanTaken:
+            if (!r.returned) {
+              outBorrowed += r.amountMinor;
+              outBorrowedCount += 1;
+            }
+            break;
         }
       }
       return DashboardStats(
         incomeMinor: income,
         expenseMinor: expense,
         outstandingLoanMinor: outLoan,
+        outstandingBorrowedMinor: outBorrowed,
         monthIncomeMinor: monthInc,
         monthExpenseMinor: monthExp,
         outstandingLoanCount: outCount,
+        outstandingBorrowedCount: outBorrowedCount,
       );
     });
   }

@@ -9,6 +9,7 @@ import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
+import '../../records/ui/add_record_sheet.dart';
 import '../../records/ui/record_form_page.dart';
 import '../../shared/date_range_bar.dart';
 
@@ -20,7 +21,9 @@ class LoansPage extends ConsumerStatefulWidget {
 }
 
 class _LoansPageState extends ConsumerState<LoansPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   late final TabController _tab;
   DateRangeFilter _range = DateRangeFilter.month;
 
@@ -38,12 +41,19 @@ class _LoansPageState extends ConsumerState<LoansPage>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final outstanding = ref.watch(outstandingLoansProvider(_range));
     final returned = ref.watch(returnedLoansProvider(_range));
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Loans'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => openAddRecordSheet(context),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: TabBar(
@@ -127,6 +137,7 @@ class _LoanCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currency = ref.watch(currencyProvider);
+    final isBorrowed = loan.type == RecordType.loanTaken;
     final overdue = !loan.returned &&
         loan.expectedReturnAt != null &&
         loan.expectedReturnAt!.isBefore(DateTime.now());
@@ -134,8 +145,7 @@ class _LoanCard extends ConsumerWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) =>
-            RecordFormPage(type: RecordType.loanGiven, existing: loan),
+        builder: (_) => RecordFormPage(type: loan.type, existing: loan),
       )),
       child: Container(
         padding: const EdgeInsets.all(18),
@@ -156,24 +166,39 @@ class _LoanCard extends ConsumerWidget {
                     color: AppColors.greenSoft,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.handshake_outlined,
-                      size: 20, color: context.ink),
+                  child: Icon(
+                    isBorrowed
+                        ? Icons.arrow_circle_down_outlined
+                        : Icons.handshake_outlined,
+                    size: 20,
+                    color: context.ink,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(loan.counterparty ?? 'Loan',
-                          style: AppTextStyles.title
-                              .copyWith(color: context.ink)),
+                      Text(
+                        loan.counterparty ??
+                            (isBorrowed ? 'Loan taken' : 'Loan given'),
+                        style:
+                            AppTextStyles.title.copyWith(color: context.ink),
+                      ),
                       const SizedBox(height: 2),
-                      if (loan.description?.isNotEmpty == true)
+                      Text(
+                        isBorrowed ? 'Borrowed from' : 'Lent to',
+                        style: AppTextStyles.caption
+                            .copyWith(color: context.inkMuted, fontSize: 11),
+                      ),
+                      if (loan.description?.isNotEmpty == true) ...[
+                        const SizedBox(height: 1),
                         Text(loan.description!,
                             style: AppTextStyles.caption
                                 .copyWith(color: context.inkMuted),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis),
+                      ],
                     ],
                   ),
                 ),
@@ -189,64 +214,66 @@ class _LoanCard extends ConsumerWidget {
             XSwitcher(
               child: Row(
                 key: ValueKey(loan.returned),
-              children: [
-                if (loan.returned) ...[
-                  _Badge(
-                    text: 'Returned',
-                    bg: AppColors.greenSoft,
-                    fg: context.ink,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                      loan.returnedAt != null
-                          ? 'on ${formatShortDate(loan.returnedAt!)}'
-                          : '',
-                      style: AppTextStyles.caption
-                          .copyWith(color: context.inkMuted)),
-                ] else ...[
-                  if (loan.expectedReturnAt != null)
+                children: [
+                  if (loan.returned) ...[
                     _Badge(
-                      text:
-                          'Due ${formatShortDate(loan.expectedReturnAt!)}',
-                      bg: overdue
-                          ? AppColors.danger.withValues(alpha: 0.1)
-                          : Colors.transparent,
-                      fg: overdue ? AppColors.danger : context.inkMuted,
-                      border: !overdue,
-                      borderColor: context.hairline,
+                      text: isBorrowed ? 'Repaid' : 'Returned',
+                      bg: AppColors.greenSoft,
+                      fg: context.ink,
                     ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => ref
-                        .read(databaseProvider)
-                        .markLoanReturned(loan.id, returned: true),
-                    style: TextButton.styleFrom(
-                      backgroundColor: AppColors.green,
-                      foregroundColor: AppColors.ink,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(100)),
-                    ),
-                    child: Text('Mark returned',
+                    const SizedBox(width: 8),
+                    Text(
+                        loan.returnedAt != null
+                            ? 'on ${formatShortDate(loan.returnedAt!)}'
+                            : '',
+                        style: AppTextStyles.caption
+                            .copyWith(color: context.inkMuted)),
+                  ] else ...[
+                    if (loan.expectedReturnAt != null)
+                      _Badge(
+                        text: 'Due ${formatShortDate(loan.expectedReturnAt!)}',
+                        bg: overdue
+                            ? AppColors.danger.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        fg: overdue ? AppColors.danger : context.inkMuted,
+                        border: !overdue,
+                        borderColor: context.hairline,
+                      ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => ref
+                          .read(databaseProvider)
+                          .markLoanReturned(loan.id, returned: true),
+                      style: TextButton.styleFrom(
+                        backgroundColor: AppColors.green,
+                        foregroundColor: AppColors.ink,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(100)),
+                      ),
+                      child: Text(
+                        isBorrowed ? 'Mark repaid' : 'Mark returned',
                         style: AppTextStyles.caption.copyWith(
                             color: AppColors.ink,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ],
-                if (loan.returned) ...[
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => ref
-                        .read(databaseProvider)
-                        .markLoanReturned(loan.id, returned: false),
-                    child: Text('Undo',
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                  if (loan.returned) ...[
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => ref
+                          .read(databaseProvider)
+                          .markLoanReturned(loan.id, returned: false),
+                      child: Text(
+                        isBorrowed ? 'Undo repayment' : 'Undo',
                         style: AppTextStyles.caption.copyWith(
-                            color: context.ink,
-                            fontWeight: FontWeight.w700)),
-                  ),
+                            color: context.ink, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
               ),
             ),
           ],

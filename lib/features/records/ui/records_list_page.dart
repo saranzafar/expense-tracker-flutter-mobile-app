@@ -10,6 +10,7 @@ import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
 import '../../shared/date_range_bar.dart';
 import '../widgets/record_tile.dart';
+import 'add_record_sheet.dart';
 
 class RecordsListPage extends ConsumerStatefulWidget {
   const RecordsListPage({super.key});
@@ -18,17 +19,34 @@ class RecordsListPage extends ConsumerStatefulWidget {
   ConsumerState<RecordsListPage> createState() => _RecordsListPageState();
 }
 
-class _RecordsListPageState extends ConsumerState<RecordsListPage> {
+class _RecordsListPageState extends ConsumerState<RecordsListPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   RecordsFilter _filter = RecordsFilter.all;
   DateRangeFilter _range = DateRangeFilter.month;
+  String? _selectedCategoryId;
 
   @override
   Widget build(BuildContext context) {
-    final records = ref.watch(filteredRecordsProvider(
-        RecordsQuery(type: _filter, range: _range)));
+    super.build(context);
+    final records = ref.watch(filteredRecordsProvider(RecordsQuery(
+      type: _filter,
+      range: _range,
+      categoryId: _selectedCategoryId,
+    )));
     final currency = ref.watch(currencyProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Records')),
+      appBar: AppBar(
+        title: const Text('Records'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => openAddRecordSheet(context),
+          ),
+        ],
+      ),
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -38,32 +56,24 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
               value: _range,
               onChanged: (r) => setState(() => _range = r),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Row(
-                children: [
-                  _FilterChip(
-                    label: 'All',
-                    selected: _filter == RecordsFilter.all,
-                    onTap: () =>
-                        setState(() => _filter = RecordsFilter.all),
-                  ),
-                  const SizedBox(width: 8),
-                  _FilterChip(
-                    label: 'Income',
-                    selected: _filter == RecordsFilter.incomeOnly,
-                    onTap: () => setState(
-                        () => _filter = RecordsFilter.incomeOnly),
-                  ),
-                  const SizedBox(width: 8),
-                  _FilterChip(
-                    label: 'Expense',
-                    selected: _filter == RecordsFilter.expenseOnly,
-                    onTap: () => setState(
-                        () => _filter = RecordsFilter.expenseOnly),
-                  ),
-                ],
-              ),
+            _TypeSegmentBar(
+              value: _filter,
+              onChanged: (f) => setState(() {
+                _filter = f;
+                if (f == RecordsFilter.incomeOnly) _selectedCategoryId = null;
+              }),
+            ),
+            AnimatedSize(
+              duration: AppMotion.med,
+              curve: AppMotion.enter,
+              alignment: Alignment.topCenter,
+              child: _filter == RecordsFilter.incomeOnly
+                  ? const SizedBox(width: double.infinity)
+                  : _CategoryFilterRow(
+                      selected: _selectedCategoryId,
+                      onChanged: (id) =>
+                          setState(() => _selectedCategoryId = id),
+                    ),
             ),
             Expanded(
               child: XSwitcher(
@@ -184,8 +194,109 @@ class _DayGroup {
   _DayGroup(this.day, this.items);
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip(
+// ── Primary type filter — segmented pill track ──────────────────────────────
+
+class _TypeSegmentBar extends StatelessWidget {
+  const _TypeSegmentBar({required this.value, required this.onChanged});
+  final RecordsFilter value;
+  final ValueChanged<RecordsFilter> onChanged;
+
+  static const _options = [
+    (RecordsFilter.all, 'All'),
+    (RecordsFilter.incomeOnly, 'Income'),
+    (RecordsFilter.expenseOnly, 'Expense'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+      child: Container(
+        height: 42,
+        decoration: BoxDecoration(
+          color: context.hairline,
+          borderRadius: BorderRadius.circular(100),
+        ),
+        padding: const EdgeInsets.all(3),
+        child: Row(
+          children: [
+            for (final (filter, label) in _options)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onChanged(filter),
+                  child: AnimatedContainer(
+                    duration: AppMotion.fast,
+                    curve: AppMotion.enter,
+                    decoration: BoxDecoration(
+                      color: value == filter ? context.surface : Colors.transparent,
+                      borderRadius: BorderRadius.circular(100),
+                      boxShadow: value == filter
+                          ? [
+                              BoxShadow(
+                                color: context.ink.withValues(alpha: 0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                          : null,
+                    ),
+                    alignment: Alignment.center,
+                    child: AnimatedDefaultTextStyle(
+                      duration: AppMotion.fast,
+                      style: AppTextStyles.caption.copyWith(
+                        color: value == filter ? context.ink : context.inkSubtle,
+                        fontWeight: value == filter ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                      child: Text(label),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Secondary category filter — small accent chips ───────────────────────────
+
+class _CategoryFilterRow extends ConsumerWidget {
+  const _CategoryFilterRow({required this.selected, required this.onChanged});
+  final String? selected;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cats = ref.watch(categoriesProvider).valueOrNull ?? [];
+    if (cats.isEmpty) return const SizedBox.shrink();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      child: Row(
+        children: [
+          _CategoryChip(
+            label: 'All',
+            selected: selected == null,
+            onTap: () => onChanged(null),
+          ),
+          for (final cat in cats) ...[
+            const SizedBox(width: 6),
+            _CategoryChip(
+              label: cat.name,
+              selected: selected == cat.id,
+              onTap: () => onChanged(selected == cat.id ? null : cat.id),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip(
       {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
@@ -193,24 +304,27 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(100),
       child: AnimatedContainer(
         duration: AppMotion.fast,
         curve: AppMotion.enter,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? context.ink : Colors.transparent,
+          color: selected ? AppColors.greenSoft : Colors.transparent,
           border: Border.all(
-              color: selected ? context.ink : context.hairline),
+            color: selected ? AppColors.green.withValues(alpha: 0.4) : context.hairline,
+            width: selected ? 1.5 : 1,
+          ),
           borderRadius: BorderRadius.circular(100),
         ),
         child: AnimatedDefaultTextStyle(
           duration: AppMotion.fast,
           style: AppTextStyles.caption.copyWith(
-              color: selected ? context.surface : context.ink,
-              fontWeight: FontWeight.w600),
+            color: selected ? context.ink : context.inkSubtle,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            fontSize: 12,
+          ),
           child: Text(label),
         ),
       ),
