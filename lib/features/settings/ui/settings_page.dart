@@ -8,6 +8,7 @@ import '../../../data/onboarding_repo.dart';
 import '../../../data/settings_repo.dart';
 import '../../about/ui/about_page.dart';
 import '../../backup/ui/backup_page.dart';
+import 'categories_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -41,6 +42,14 @@ class SettingsPage extends ConsumerWidget {
                 trailing: Text(currency.flag,
                     style: const TextStyle(fontSize: 22)),
                 onTap: () => _openCurrencySheet(context, ref, currency),
+              ),
+              _Tile(
+                icon: Icons.label_outlined,
+                title: 'Categories',
+                subtitle: 'Add, rename or delete categories',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CategoriesPage()),
+                ),
               ),
             ]),
             const SizedBox(height: 16),

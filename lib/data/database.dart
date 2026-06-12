@@ -222,6 +222,19 @@ class AppDatabase extends _$AppDatabase {
     return (select(categories)..where((c) => c.id.equals(id))).getSingle();
   }
 
+  Future<void> renameCategory(String id, String name) =>
+      (update(categories)..where((c) => c.id.equals(id)))
+          .write(CategoriesCompanion(name: Value(name)));
+
+  Future<void> deleteCategory(String id) async {
+    // Null out references so existing records/projects don't become orphaned.
+    await (update(records)..where((r) => r.categoryId.equals(id)))
+        .write(const RecordsCompanion(categoryId: Value(null)));
+    await (update(projects)..where((p) => p.categoryId.equals(id)))
+        .write(const ProjectsCompanion(categoryId: Value(null)));
+    await (delete(categories)..where((c) => c.id.equals(id))).go();
+  }
+
   Stream<DashboardStats> watchStats() {
     return select(records).watch().map((rows) {
       final now = DateTime.now();

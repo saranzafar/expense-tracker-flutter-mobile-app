@@ -87,7 +87,7 @@ class RecordTile extends ConsumerWidget {
                   Text(subtitle,
                       style: AppTextStyles.caption
                           .copyWith(color: context.inkMuted)),
-                  if (isExpense && record.categoryId != null) ...[
+                  if (!isLoan && record.categoryId != null) ...[
                     const SizedBox(height: 4),
                     Builder(builder: (_) {
                       String? catName;

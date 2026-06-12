@@ -156,7 +156,7 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
               duration: AppMotion.med,
               curve: AppMotion.enter,
               alignment: Alignment.topCenter,
-              child: _type != RecordType.expense
+              child: _isLoan
                   ? const SizedBox(width: double.infinity)
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,8 +242,7 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
       expectedReturnAt: Value(_isLoan ? _expectedReturnAt : null),
       returned: Value(widget.existing?.returned ?? false),
       returnedAt: Value(widget.existing?.returnedAt),
-      categoryId: Value(
-          _type == RecordType.expense ? _selectedCategoryId : null),
+      categoryId: Value(!_isLoan ? _selectedCategoryId : null),
     ));
     if (mounted) Navigator.of(context).pop();
   }

@@ -378,7 +378,6 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
   @override
   Widget build(BuildContext context) {
     final cats = ref.watch(categoriesProvider).valueOrNull ?? [];
-    final showCategories = _type != RecordsFilter.incomeOnly;
 
     return Container(
       decoration: BoxDecoration(
@@ -453,10 +452,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                     label: 'Income',
                     selected: _type == RecordsFilter.incomeOnly,
                     onTap: () {
-                      setState(() {
-                        _type = RecordsFilter.incomeOnly;
-                        _categoryId = null;
-                      });
+                      setState(() => _type = RecordsFilter.incomeOnly);
                       _notify();
                     },
                   ),
@@ -472,38 +468,36 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
               ),
 
               // ── Category ──────────────────────────────────────────────────
-              if (showCategories) ...[
-                const SizedBox(height: 20),
-                _sectionLabel('Category'),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (cats.isNotEmpty)
-                      _Chip(
-                        label: 'All',
-                        selected: _categoryId == null,
-                        onTap: () {
-                          setState(() => _categoryId = null);
-                          _notify();
-                        },
-                      ),
-                    for (final cat in cats)
-                      _Chip(
-                        label: cat.name,
-                        selected: _categoryId == cat.id,
-                        onTap: () {
-                          setState(() => _categoryId =
-                              _categoryId == cat.id ? null : cat.id);
-                          _notify();
-                        },
-                      ),
-                    // Always show "+ Add" so users can create categories here
-                    _AddChip(onTap: () => _addCategory(cats)),
-                  ],
-                ),
-              ],
+              const SizedBox(height: 20),
+              _sectionLabel('Category'),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (cats.isNotEmpty)
+                    _Chip(
+                      label: 'All',
+                      selected: _categoryId == null,
+                      onTap: () {
+                        setState(() => _categoryId = null);
+                        _notify();
+                      },
+                    ),
+                  for (final cat in cats)
+                    _Chip(
+                      label: cat.name,
+                      selected: _categoryId == cat.id,
+                      onTap: () {
+                        setState(() =>
+                            _categoryId =
+                                _categoryId == cat.id ? null : cat.id);
+                        _notify();
+                      },
+                    ),
+                  _AddChip(onTap: () => _addCategory(cats)),
+                ],
+              ),
 
               // ── Date range ────────────────────────────────────────────────
               const SizedBox(height: 20),
