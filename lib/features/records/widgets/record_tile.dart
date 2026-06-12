@@ -109,7 +109,7 @@ class RecordTile extends ConsumerWidget {
                           catName,
                           style: AppTextStyles.caption.copyWith(
                             fontSize: 10,
-                            color: AppColors.ink,
+                            color: context.ink,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

@@ -499,6 +499,7 @@ class _EmptyRecent extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
       decoration: BoxDecoration(
+        color: context.cardSurface,
         border: Border.all(color: context.hairline),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -557,6 +558,7 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
+        color: context.cardSurface,
         border: Border.all(color: context.hairline),
         borderRadius: BorderRadius.circular(24),
       ),

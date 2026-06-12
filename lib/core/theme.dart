@@ -8,6 +8,8 @@ class AppColors {
   // Dark
   static const surfaceDark = Color(0xFF0B0B0C);
   static const inkDark = Color(0xFFFFFFFF);
+  // Card elevation in dark mode — slightly lighter than the page bg
+  static const cardSurfaceDark = Color(0xFF1A1A1B);
 
   // Accent (shared)
   static const green = Color(0xFFA4F133);
@@ -36,6 +38,9 @@ extension AppColorsX on BuildContext {
       _isDark ? AppColors.inkSubtleDark : AppColors.inkSubtle;
   Color get hairline =>
       _isDark ? AppColors.hairlineDark : AppColors.hairline;
+  // Use for content cards so they sit visually above the page background.
+  Color get cardSurface =>
+      _isDark ? AppColors.cardSurfaceDark : AppColors.surface;
 }
 
 ThemeData buildAppTheme() => _buildTheme(Brightness.light);

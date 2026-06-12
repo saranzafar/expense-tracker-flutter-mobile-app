@@ -163,7 +163,7 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
                         decoration: BoxDecoration(
                           border: Border.all(color: context.hairline),
                           borderRadius: BorderRadius.circular(14),
-                          color: context.surface,
+                          color: context.cardSurface,
                         ),
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
@@ -177,7 +177,7 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(Icons.label_outline,
-                                size: 18, color: AppColors.ink),
+                                size: 18, color: AppColors.green),
                           ),
                           title: Text(cat.name,
                               style:

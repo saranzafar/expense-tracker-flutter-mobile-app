@@ -255,6 +255,7 @@ class _CardShell extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
+          color: context.cardSurface,
           border: Border.all(color: context.hairline),
           borderRadius: BorderRadius.circular(20),
         ),
@@ -293,7 +294,7 @@ class _CardShell extends StatelessWidget {
                     ),
                     child: Text(catName!,
                         style: AppTextStyles.caption.copyWith(
-                            color: AppColors.ink,
+                            color: context.ink,
                             fontWeight: FontWeight.w600,
                             fontSize: 11)),
                   ),

@@ -88,7 +88,7 @@ class ProjectDetailPage extends ConsumerWidget {
                                   ),
                                   child: Text(catName,
                                       style: AppTextStyles.caption.copyWith(
-                                          color: AppColors.ink,
+                                          color: context.ink,
                                           fontWeight: FontWeight.w700,
                                           fontSize: 11)),
                                 ),
