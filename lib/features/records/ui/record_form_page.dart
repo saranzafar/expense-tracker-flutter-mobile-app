@@ -250,17 +250,22 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
 
   Future<void> _addCategory() async {
     final cats = ref.read(categoriesProvider).valueOrNull ?? [];
-    final ctrl = TextEditingController();
+    // Capture text via onChanged — no TextEditingController needed.
+    // Using a controller + ctrl.dispose() right after showDialog resolves
+    // causes a crash because the dialog close animation still renders the
+    // TextField for ~200ms after the Future completes, and addListener on a
+    // disposed controller throws '_dependents.isEmpty is not true'.
+    String inputText = '';
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('New category'),
         content: TextField(
-          controller: ctrl,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
           decoration:
               const InputDecoration(hintText: 'e.g. Food, Transport'),
+          onChanged: (v) => inputText = v,
           onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
         ),
         actions: [
@@ -272,13 +277,12 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
               backgroundColor: AppColors.green,
               foregroundColor: AppColors.ink,
             ),
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            onPressed: () => Navigator.pop(ctx, inputText.trim()),
             child: const Text('Add'),
           ),
         ],
       ),
     );
-    ctrl.dispose();
     if (name == null || name.isEmpty || !mounted) return;
     final existing =
         cats.where((c) => c.name.toLowerCase() == name.toLowerCase());

@@ -290,17 +290,17 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
       _quickRange != DateRangeFilter.month;
 
   Future<void> _addCategory(List<CategoryRow> cats) async {
-    final ctrl = TextEditingController();
+    String inputText = '';
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('New category'),
         content: TextField(
-          controller: ctrl,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
           decoration:
               const InputDecoration(hintText: 'e.g. Food, Transport'),
+          onChanged: (v) => inputText = v,
           onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
         ),
         actions: [
@@ -312,13 +312,12 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
               backgroundColor: AppColors.green,
               foregroundColor: AppColors.ink,
             ),
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            onPressed: () => Navigator.pop(ctx, inputText.trim()),
             child: const Text('Add'),
           ),
         ],
       ),
     );
-    ctrl.dispose();
     if (name == null || name.isEmpty || !mounted) return;
     final existing =
         cats.where((c) => c.name.toLowerCase() == name.toLowerCase());
