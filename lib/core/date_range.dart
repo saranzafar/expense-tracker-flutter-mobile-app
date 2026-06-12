@@ -10,6 +10,7 @@ sealed class DateRangeFilter {
   static const DateRangeFilter year = _Rolling(days: 365, label: '1Y');
 
   factory DateRangeFilter.calendarYear(int year) = _CalendarYear;
+  factory DateRangeFilter.custom(DateTime start, DateTime end) = _Custom;
 
   String get label;
 }
@@ -66,6 +67,26 @@ class _CalendarYear extends DateRangeFilter {
   int get hashCode => year.hashCode;
 }
 
+class _Custom extends DateRangeFilter {
+  final DateTime start;
+  final DateTime end;
+  const _Custom(this.start, this.end);
+
+  @override
+  String get label => 'Custom';
+
+  @override
+  DateTimeRange resolve(DateTime _) => DateTimeRange(start: start, end: end);
+
+  @override
+  bool operator ==(Object o) =>
+      o is _Custom && o.start == start && o.end == end;
+
+  @override
+  int get hashCode => Object.hash(start, end);
+}
+
 /// True iff this filter is a specific calendar year (not a rolling window).
 bool isCalendarYear(DateRangeFilter f) => f is _CalendarYear;
 int? calendarYearOf(DateRangeFilter f) => f is _CalendarYear ? f.year : null;
+bool isCustomRange(DateRangeFilter f) => f is _Custom;
