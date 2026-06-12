@@ -168,6 +168,7 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
                           selected: _selectedCategoryId,
                           onChanged: (id) =>
                               setState(() => _selectedCategoryId = id),
+                          onAdd: _addCategory,
                         ),
                       ],
                     ),
@@ -247,6 +248,49 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  Future<void> _addCategory() async {
+    final cats = ref.read(categoriesProvider).valueOrNull ?? [];
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New category'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration:
+              const InputDecoration(hintText: 'e.g. Food, Transport'),
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.green,
+              foregroundColor: AppColors.ink,
+            ),
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (name == null || name.isEmpty || !mounted) return;
+    final existing =
+        cats.where((c) => c.name.toLowerCase() == name.toLowerCase());
+    if (existing.isNotEmpty) {
+      setState(() => _selectedCategoryId = existing.first.id);
+      return;
+    }
+    final row = await ref.read(databaseProvider).addCategory(name);
+    if (!mounted) return;
+    setState(() => _selectedCategoryId = row.id);
+  }
+
   Future<void> _confirmDelete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -272,9 +316,14 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
 }
 
 class _CategoryPicker extends ConsumerWidget {
-  const _CategoryPicker({required this.selected, required this.onChanged});
+  const _CategoryPicker({
+    required this.selected,
+    required this.onChanged,
+    required this.onAdd,
+  });
   final String? selected;
   final ValueChanged<String?> onChanged;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -291,10 +340,7 @@ class _CategoryPicker extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
           ],
-          _AddCategoryChip(
-            categories: cats,
-            onAdded: onChanged,
-          ),
+          _AddCategoryChip(onAdd: onAdd),
         ],
       ),
     );
@@ -339,64 +385,16 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-class _AddCategoryChip extends ConsumerStatefulWidget {
-  const _AddCategoryChip({required this.categories, required this.onAdded});
-  final List<CategoryRow> categories;
-  final ValueChanged<String?> onAdded;
-
-  @override
-  ConsumerState<_AddCategoryChip> createState() => _AddCategoryChipState();
-}
-
-class _AddCategoryChipState extends ConsumerState<_AddCategoryChip> {
-  Future<void> _showDialog() async {
-    final ctrl = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New category'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(hintText: 'e.g. Food, Transport'),
-          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.green,
-              foregroundColor: AppColors.ink,
-            ),
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-    ctrl.dispose();
-    if (name == null || name.isEmpty) return;
-    // Check for case-insensitive duplicate
-    final existing = widget.categories.where(
-        (c) => c.name.toLowerCase() == name.toLowerCase());
-    if (existing.isNotEmpty) {
-      widget.onAdded(existing.first.id);
-      return;
-    }
-    final row = await ref.read(databaseProvider).addCategory(name);
-    widget.onAdded(row.id);
-  }
+class _AddCategoryChip extends StatelessWidget {
+  const _AddCategoryChip({required this.onAdd});
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _showDialog,
+      onTap: onAdd,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           border: Border.all(color: context.hairline),
           borderRadius: BorderRadius.circular(100),
