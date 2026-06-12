@@ -10,6 +10,7 @@ import '../data/providers.dart';
 import '../features/backup/data/backup_repo.dart';
 import '../features/home/ui/home_page.dart';
 import '../features/loans/ui/loans_page.dart';
+import '../features/projects/ui/projects_page.dart';
 import '../features/records/ui/records_list_page.dart';
 import '../features/settings/ui/settings_page.dart';
 
@@ -93,6 +94,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     HomePage(),
     RecordsListPage(),
     LoansPage(),
+    ProjectsPage(),
     SettingsPage(),
   ];
 
@@ -100,6 +102,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     _NavItem('Home', Icons.home_outlined, Icons.home),
     _NavItem('Records', Icons.receipt_long_outlined, Icons.receipt_long),
     _NavItem('Loans', Icons.handshake_outlined, Icons.handshake),
+    _NavItem('Projects', Icons.folder_outlined, Icons.folder),
     _NavItem('Settings', Icons.settings_outlined, Icons.settings),
   ];
 

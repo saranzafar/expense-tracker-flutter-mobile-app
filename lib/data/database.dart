@@ -79,13 +79,43 @@ class DashboardStats {
   );
 }
 
-@DriftDatabase(tables: [Records, Categories])
+@DataClassName('ProjectRow')
+class Projects extends Table {
+  TextColumn get id => text().clientDefault(() => _uuid.v4())();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get categoryId => text().nullable()();
+  IntColumn get totalAmountMinor => integer()();
+  DateTimeColumn get startDate => dateTime()();
+  DateTimeColumn get endDate => dateTime().nullable()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('ProjectPaymentRow')
+class ProjectPayments extends Table {
+  TextColumn get id => text().clientDefault(() => _uuid.v4())();
+  TextColumn get projectId => text()();
+  IntColumn get amountMinor => integer()();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get paidAt => dateTime()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Records, Categories, Projects, ProjectPayments])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -100,6 +130,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.addColumn(records, records.categoryId);
             await m.createTable(categories);
+          }
+          if (from < 4) {
+            await m.createTable(projects);
+            await m.createTable(projectPayments);
           }
         },
       );
@@ -239,6 +273,35 @@ class AppDatabase extends _$AppDatabase {
       );
     });
   }
+
+  // ── Projects ────────────────────────────────────────────────────────────────
+
+  Stream<List<ProjectRow>> watchProjects() =>
+      (select(projects)
+            ..orderBy([(p) => OrderingTerm.desc(p.createdAt)]))
+          .watch();
+
+  Future<void> upsertProject(ProjectsCompanion data) =>
+      into(projects).insertOnConflictUpdate(data);
+
+  Future<void> deleteProject(String id) async {
+    await (delete(projectPayments)..where((p) => p.projectId.equals(id))).go();
+    await (delete(projects)..where((p) => p.id.equals(id))).go();
+  }
+
+  // ── Project Payments ─────────────────────────────────────────────────────────
+
+  Stream<List<ProjectPaymentRow>> watchProjectPayments(String projectId) =>
+      (select(projectPayments)
+            ..where((p) => p.projectId.equals(projectId))
+            ..orderBy([(p) => OrderingTerm.asc(p.paidAt)]))
+          .watch();
+
+  Future<void> addProjectPayment(ProjectPaymentsCompanion data) =>
+      into(projectPayments).insert(data);
+
+  Future<void> deleteProjectPayment(String id) =>
+      (delete(projectPayments)..where((p) => p.id.equals(id))).go();
 }
 
 LazyDatabase _openConnection() {

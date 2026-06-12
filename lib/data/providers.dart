@@ -103,6 +103,15 @@ final earliestRecordYearProvider = FutureProvider<int>((ref) async {
 final categoriesProvider = StreamProvider<List<CategoryRow>>((ref) =>
     ref.watch(databaseProvider).watchCategories());
 
+final projectsProvider = StreamProvider<List<ProjectRow>>(
+    (ref) => ref.watch(databaseProvider).watchProjects());
+
+final projectPaymentsProvider =
+    StreamProvider.family<List<ProjectPaymentRow>, String>(
+  (ref, projectId) =>
+      ref.watch(databaseProvider).watchProjectPayments(projectId),
+);
+
 final chartDataProvider =
     StreamProvider.family<List<ChartPoint>, ChartPeriod>((ref, period) {
   final now = DateTime.now();
