@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/currency.dart';
 import '../../../core/date_range.dart';
 import '../../../core/formatters.dart';
 import '../../../core/motion.dart';
@@ -102,6 +103,11 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
       limit: _limit,
     )));
     final currency = ref.watch(currencyProvider);
+    final totals = ref.watch(filteredTotalsProvider(RecordsTotalsQuery(
+      type: _filter,
+      range: _range,
+      categoryId: _selectedCategoryId,
+    )));
 
     return Scaffold(
       appBar: AppBar(
@@ -182,11 +188,20 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
                 key: const ValueKey('rec-list'),
                 controller: _scrollController,
                 padding: const EdgeInsets.only(bottom: 120),
-                // +1 for the footer row
-                itemCount: groups.length + 1,
+                itemCount: groups.length + 2,
                 itemBuilder: (_, i) {
-                  // Footer
-                  if (i == groups.length) {
+                  // ── Totals strip (index 0) ────────────────────────────────
+                  if (i == 0) {
+                    return totals.maybeWhen(
+                      data: (t) => t.incomeMinor == 0 && t.expenseMinor == 0
+                          ? const SizedBox.shrink()
+                          : _TotalsStrip(totals: t, currency: currency),
+                      orElse: () => const SizedBox.shrink(),
+                    );
+                  }
+
+                  // ── Footer (last index) ───────────────────────────────────
+                  if (i == groups.length + 1) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       child: Center(
@@ -208,7 +223,8 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
                     );
                   }
 
-                  final g = groups[i];
+                  // ── Day group (shifted by 1) ──────────────────────────────
+                  final g = groups[i - 1];
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -695,7 +711,7 @@ class _Chip extends StatelessWidget {
           label,
           style: AppTextStyles.caption.copyWith(
             // Flip: selected text = surface (white in light, dark in dark)
-            color: selected ? context.surface : context.inkSubtle,
+            color: selected ? context.surface : context.ink,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             fontSize: 13,
           ),
@@ -786,6 +802,106 @@ class _DateTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Totals strip ──────────────────────────────────────────────────────────────
+
+class _TotalsStrip extends StatelessWidget {
+  const _TotalsStrip({required this.totals, required this.currency});
+  final RecordsTotals totals;
+  final CurrencyOption currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final net = totals.netMinor;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: context.cardSurface,
+          border: Border.all(color: context.hairline),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            _StatItem(
+              icon: Icons.arrow_downward_rounded,
+              color: AppColors.green,
+              label: 'Income',
+              value: formatMoney(totals.incomeMinor, currency),
+            ),
+            Container(
+              width: 1,
+              height: 32,
+              color: context.hairline,
+              margin: const EdgeInsets.symmetric(horizontal: 14),
+            ),
+            _StatItem(
+              icon: Icons.arrow_upward_rounded,
+              color: AppColors.danger,
+              label: 'Expense',
+              value: formatMoney(totals.expenseMinor, currency),
+            ),
+            const Spacer(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('Net',
+                    style: AppTextStyles.caption
+                        .copyWith(color: context.inkSubtle, fontSize: 11)),
+                const SizedBox(height: 2),
+                Text(
+                  '${net >= 0 ? '+' : '−'} ${formatMoney(net.abs(), currency)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: net >= 0 ? AppColors.green : AppColors.danger,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  const _StatItem({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+  });
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 3),
+            Text(label,
+                style: AppTextStyles.caption.copyWith(
+                    color: context.inkSubtle, fontSize: 11)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(value,
+            style: AppTextStyles.caption.copyWith(
+                color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+      ],
     );
   }
 }

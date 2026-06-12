@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/chart_data.dart';
 import '../../../core/currency.dart';
+import '../../../core/formatters.dart';
 import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/database.dart';
@@ -548,12 +549,63 @@ class _ChartCard extends ConsumerStatefulWidget {
 }
 
 class _ChartCardState extends ConsumerState<_ChartCard> {
-  ChartPeriod _period = ChartPeriod.month;
+  ChartPeriod? _period = ChartPeriod.month; // null = custom
+  DateTimeRange? _customRange;
+
+  bool get _isCustom => _period == null;
+
+  bool get _useMonthly {
+    if (_period == ChartPeriod.year) return true;
+    if (_customRange != null) return _customRange!.duration.inDays > 90;
+    return false;
+  }
+
+  Future<void> _pickCustomRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: now,
+      initialDateRange: _customRange ??
+          DateTimeRange(
+            start: now.subtract(const Duration(days: 29)),
+            end: now,
+          ),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _period = null;
+        _customRange = picked;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final currency = ref.watch(currencyProvider);
-    final chartAsync = ref.watch(chartDataProvider(_period));
+
+    // Resolve chart data from the correct provider
+    final AsyncValue<List<ChartPoint>> chartAsync;
+    if (_period != null) {
+      chartAsync = ref.watch(chartDataProvider(_period!));
+    } else if (_customRange != null) {
+      chartAsync = ref.watch(customChartDataProvider(ChartDateRange(
+        from: _customRange!.start,
+        to: _customRange!.end,
+      )));
+    } else {
+      chartAsync = const AsyncData([]);
+    }
+
+    // Compute totals from loaded chart points
+    final points = chartAsync.valueOrNull ?? [];
+    final totalIncome =
+        points.fold<int>(0, (s, p) => s + p.income.toInt());
+    final totalExpense =
+        points.fold<int>(0, (s, p) => s + p.expense.toInt());
+    final net = totalIncome - totalExpense;
+    final hasTotals =
+        chartAsync.hasValue && (totalIncome > 0 || totalExpense > 0);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -565,44 +617,125 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text('Overview',
-                  style:
-                      AppTextStyles.title.copyWith(color: context.ink)),
-              const Spacer(),
-              _PeriodChip(
-                label: '1W',
-                selected: _period == ChartPeriod.week,
-                onTap: () => setState(() => _period = ChartPeriod.week),
-              ),
-              const SizedBox(width: 6),
-              _PeriodChip(
-                label: '1M',
-                selected: _period == ChartPeriod.month,
-                onTap: () => setState(() => _period = ChartPeriod.month),
-              ),
-              const SizedBox(width: 6),
-              _PeriodChip(
-                label: '1Y',
-                selected: _period == ChartPeriod.year,
-                onTap: () => setState(() => _period = ChartPeriod.year),
-              ),
-            ],
+          // ── Header: title row ────────────────────────────────────────
+          Text('Overview',
+              style: AppTextStyles.title.copyWith(color: context.ink)),
+          const SizedBox(height: 12),
+          // ── Period chips (scrollable to handle long custom label) ────
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _PeriodChip(
+                  label: '1W',
+                  selected: _period == ChartPeriod.week,
+                  onTap: () => setState(() {
+                    _period = ChartPeriod.week;
+                    _customRange = null;
+                  }),
+                ),
+                const SizedBox(width: 6),
+                _PeriodChip(
+                  label: '1M',
+                  selected: _period == ChartPeriod.month,
+                  onTap: () => setState(() {
+                    _period = ChartPeriod.month;
+                    _customRange = null;
+                  }),
+                ),
+                const SizedBox(width: 6),
+                _PeriodChip(
+                  label: '1Y',
+                  selected: _period == ChartPeriod.year,
+                  onTap: () => setState(() {
+                    _period = ChartPeriod.year;
+                    _customRange = null;
+                  }),
+                ),
+                const SizedBox(width: 6),
+                _PeriodChip(
+                  label: _isCustom && _customRange != null
+                      ? '${formatShortDate(_customRange!.start)} – ${formatShortDate(_customRange!.end)}'
+                      : 'Custom',
+                  selected: _isCustom,
+                  onTap: _pickCustomRange,
+                ),
+              ],
+            ),
           ),
+
+          // ── Totals row ───────────────────────────────────────────────
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: hasTotals
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Row(
+                      children: [
+                        _TotalStat(
+                          label: 'Income',
+                          minor: totalIncome,
+                          currency: currency,
+                          color: AppColors.green,
+                          icon: Icons.arrow_downward_rounded,
+                        ),
+                        Container(
+                          width: 1,
+                          height: 32,
+                          color: context.hairline,
+                          margin:
+                              const EdgeInsets.symmetric(horizontal: 14),
+                        ),
+                        _TotalStat(
+                          label: 'Expense',
+                          minor: totalExpense,
+                          currency: currency,
+                          color: AppColors.danger,
+                          icon: Icons.arrow_upward_rounded,
+                        ),
+                        const Spacer(),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('Net',
+                                style: AppTextStyles.caption
+                                    .copyWith(color: context.inkSubtle, fontSize: 11)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${net >= 0 ? '+' : '−'} ${formatMoney(net.abs(), currency)}',
+                              style: AppTextStyles.caption.copyWith(
+                                color: net >= 0
+                                    ? AppColors.green
+                                    : AppColors.danger,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+
+          // ── Chart ────────────────────────────────────────────────────
           const SizedBox(height: 20),
           SizedBox(
             height: 160,
             child: chartAsync.when(
+              skipLoadingOnReload: true,
               loading: () => const Center(
                 child: CircularProgressIndicator(
                     color: AppColors.green, strokeWidth: 2),
               ),
               error: (e, _) => const SizedBox.shrink(),
-              data: (points) {
-                final allZero = points.every(
-                    (p) => p.income == 0 && p.expense == 0);
-                if (allZero) {
+              data: (pts) {
+                final allZero =
+                    pts.every((p) => p.income == 0 && p.expense == 0);
+                if (allZero || pts.isEmpty) {
                   return Center(
                     child: Text('No data for this period',
                         style: AppTextStyles.caption
@@ -610,12 +743,15 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
                   );
                 }
                 return _LineChart(
-                    points: points,
-                    period: _period,
-                    currency: currency);
+                  points: pts,
+                  useMonthly: _useMonthly,
+                  currency: currency,
+                );
               },
             ),
           ),
+
+          // ── Legend ───────────────────────────────────────────────────
           const SizedBox(height: 16),
           Row(
             children: [
@@ -626,6 +762,45 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TotalStat extends StatelessWidget {
+  const _TotalStat({
+    required this.label,
+    required this.minor,
+    required this.currency,
+    required this.color,
+    required this.icon,
+  });
+  final String label;
+  final int minor;
+  final CurrencyOption currency;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 3),
+            Text(label,
+                style: AppTextStyles.caption
+                    .copyWith(color: context.inkSubtle, fontSize: 11)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          formatMoney(minor, currency),
+          style: AppTextStyles.caption.copyWith(
+              color: color, fontWeight: FontWeight.w700, fontSize: 13),
+        ),
+      ],
     );
   }
 }
@@ -645,10 +820,9 @@ class _PeriodChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: AppMotion.fast,
-        curve: AppMotion.enter,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
           color: selected ? context.ink : Colors.transparent,
           borderRadius: BorderRadius.circular(100),
@@ -656,10 +830,11 @@ class _PeriodChip extends StatelessWidget {
               color: selected ? context.ink : context.hairline),
         ),
         child: AnimatedDefaultTextStyle(
-          duration: AppMotion.fast,
+          duration: const Duration(milliseconds: 150),
           style: AppTextStyles.caption.copyWith(
-            color: selected ? context.surface : context.inkMuted,
+            color: selected ? context.surface : context.ink,
             fontWeight: FontWeight.w600,
+            fontSize: 12,
           ),
           child: Text(label),
         ),
@@ -685,8 +860,8 @@ class _Legend extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(label,
-            style: AppTextStyles.caption
-                .copyWith(color: context.inkMuted)),
+            style:
+                AppTextStyles.caption.copyWith(color: context.inkMuted)),
       ],
     );
   }
@@ -695,18 +870,15 @@ class _Legend extends StatelessWidget {
 class _LineChart extends StatelessWidget {
   const _LineChart({
     required this.points,
-    required this.period,
+    required this.useMonthly,
     required this.currency,
   });
   final List<ChartPoint> points;
-  final ChartPeriod period;
+  final bool useMonthly;
   final CurrencyOption currency;
 
   @override
   Widget build(BuildContext context) {
-    // Extract theme colors here (build phase) — fl_chart callbacks fire
-    // during paint and must NOT call context.dependOnInheritedWidgetOfExactType,
-    // otherwise Flutter throws '_dependents.isEmpty is not true'.
     final inkMuted = context.inkMuted;
     final inkColor = context.ink;
 
@@ -727,20 +899,18 @@ class _LineChart extends StatelessWidget {
     String bottomLabel(int idx) {
       if (idx < 0 || idx >= points.length) return '';
       final d = points[idx].date;
-      switch (period) {
-        case ChartPeriod.week:
-          const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-          return days[d.weekday - 1];
-        case ChartPeriod.month:
-          // Show every 5th label
-          if (idx % 5 != 0) return '';
-          return '${d.day}';
-        case ChartPeriod.year:
-          const months = [
-            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-          ];
-          return months[d.month - 1];
+      if (useMonthly) {
+        const months = [
+          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+        return months[d.month - 1];
+      } else if (points.length <= 7) {
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        return days[d.weekday - 1];
+      } else {
+        if (idx % 5 != 0) return '';
+        return '${d.day}';
       }
     }
 
@@ -750,7 +920,6 @@ class _LineChart extends StatelessWidget {
         maxY: maxY,
         clipData: const FlClipData.all(),
         lineBarsData: [
-          // Income
           LineChartBarData(
             spots: incomeSpots,
             isCurved: true,
@@ -770,7 +939,6 @@ class _LineChart extends StatelessWidget {
               ),
             ),
           ),
-          // Expense
           LineChartBarData(
             spots: expenseSpots,
             isCurved: true,
@@ -794,12 +962,12 @@ class _LineChart extends StatelessWidget {
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
-          topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
-          leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -812,8 +980,8 @@ class _LineChart extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     label,
-                    style: AppTextStyles.caption.copyWith(
-                        color: inkMuted, fontSize: 10),
+                    style: AppTextStyles.caption
+                        .copyWith(color: inkMuted, fontSize: 10),
                   ),
                 );
               },

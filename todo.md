@@ -1,7 +1,7 @@
 # Todo
 
-| Todo | Description |
-|------|-------------|
-| Home page — extended date range filter | The home page currently offers fixed quick-range chips (1D / 1W / 1M / 1Y). Add a **Custom** option that opens a date-range picker so the user can select any arbitrary start and end date, matching what the Records filter sheet already supports. |
-| Home page — show income & expense totals for selected date | Below the balance card (or inside it), display a summary of **total income** and **total expense** for whichever date range is currently selected (default or custom). This gives the user an at-a-glance picture of their cash flow for the period without having to open the Records page. The same summary strip should also appear on the Records page above the list, updating live as filters change. |
-| Dark mode — filter chips do not invert correctly on Records page | On the Records page filter sheet the `_Chip` widget still reads wrong in some theme combinations. Audit selected/unselected chip `color` and `text color` against both light and dark `ColorScheme` values to ensure sufficient contrast in every state. |
+| Status | Todo | Description |
+|--------|------|-------------|
+| ✅ Done | Home page — extended date range filter | Added a **Custom** chip to the Overview chart card that opens Flutter's built-in `showDateRangePicker`. Custom ranges drive a new `customChartDataProvider` which auto-selects daily vs monthly buckets based on range length (≤90 days = daily, >90 = monthly). |
+| ✅ Done | Home page — show income & expense totals for selected date | The `_ChartCard` now shows an animated totals row (Income / Expense / Net) computed from the active chart data — updates live as the period chip or custom range changes. The Records page shows a `_TotalsStrip` card at the top of the list driven by `filteredTotalsProvider` (no row limit, accurate across all records). |
+| ✅ Done | Dark mode — filter chips do not invert correctly on Records page | `_Chip` unselected text changed from `context.inkSubtle` (38% opacity) to `context.ink` (full theme-aware color) in both `records_list_page.dart` and `projects_page.dart`. Selected: ink background + surface text. Unselected: transparent + ink text. High contrast in both themes. |

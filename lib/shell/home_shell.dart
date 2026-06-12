@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/motion.dart';
+import '../core/theme.dart';
 import '../data/providers.dart';
 import '../features/backup/data/backup_repo.dart';
 import '../features/home/ui/home_page.dart';
@@ -268,13 +269,13 @@ class _NavPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconColor = Color.lerp(
-      Colors.white.withValues(alpha: 0.50),
-      Colors.white,
+      Colors.white.withValues(alpha: 0.45),
+      AppColors.green,
       expansion,
     )!;
     final pillColor = Color.lerp(
       Colors.transparent,
-      const Color(0xFF3C3C3E),
+      AppColors.greenSoft,
       expansion,
     )!;
     final labelOpacity =
@@ -311,8 +312,11 @@ class _NavPill extends StatelessWidget {
                       opacity: labelOpacity,
                       child: Text(
                         item.label,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Color.lerp(
+                              Colors.white.withValues(alpha: 0.45),
+                              AppColors.green,
+                              expansion),
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                           height: 1,

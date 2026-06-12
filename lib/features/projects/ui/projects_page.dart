@@ -693,7 +693,7 @@ class _Chip extends StatelessWidget {
         child: Text(
           label,
           style: AppTextStyles.caption.copyWith(
-            color: selected ? context.surface : context.inkSubtle,
+            color: selected ? context.surface : context.ink,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             fontSize: 13,
           ),
