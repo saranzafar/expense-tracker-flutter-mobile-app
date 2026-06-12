@@ -81,7 +81,9 @@ For Google Drive backup and release-signing setup, see [SETUP.md](SETUP.md).
 - Shared categories across all record types with Settings → Categories management page
 - Infinite-scroll pagination on the Records page (50 records per page)
 - Dark mode: chip text, category badge, and card surface colour fixes
-- Animated floating nav bar with green active-pill indicator
+- Balance card: dark-gray surface in dark mode (no longer inverts to white)
+- Floating nav bar: frosted glass in light mode (white bg, black border, soft shadow); white border in dark mode; green active pill with black fill in light / green-soft fill in dark
+- Nav bar animation: pill travels directly from source to target tab (400 ms easeInOutCubic) independent of the page slide — no intermediate tabs light up on long jumps; swipe still tracks the finger frame-perfectly
 
 ### v1.0.0
 - Initial release: expense, income, loan-given records
