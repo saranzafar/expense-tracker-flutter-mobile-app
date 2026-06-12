@@ -105,7 +105,7 @@ Wait ~5 minutes after saving for propagation.
 ```bash
 flutter clean && flutter pub get
 flutter build apk --release --split-per-abi \
-  --obfuscate --split-debug-info=build/symbols/v1.0.0
+  --obfuscate --split-debug-info=build/symbols/v1.0.1
 ```
 
 Outputs three APKs in `build/app/outputs/flutter-apk/`. Ship `app-arm64-v8a-release.apk` to ~95 % of users.
