@@ -160,14 +160,14 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // In light mode: black hero card with white text.
-    // In dark mode: invert — white hero card with black text. Green accent stays.
-    final cardBg = isDark ? Colors.white : Colors.black;
-    final foreground = isDark ? Colors.black : Colors.white;
+    // Light mode: black hero card. Dark mode: dark-gray card (not white).
+    // Text is always white since both card backgrounds are dark.
+    final cardBg = isDark ? const Color(0xFF1A1A1B) : Colors.black;
+    const foreground = Colors.white;
     final muted = foreground.withValues(alpha: 0.60);
     final subtle = foreground.withValues(alpha: 0.40);
     final hairline = foreground.withValues(alpha: 0.12);
-    final valueColor = isDark ? Colors.black : Colors.white;
+    const valueColor = Colors.white;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -181,7 +181,7 @@ class _BalanceCard extends StatelessWidget {
             Positioned.fill(
               child: RepaintBoundary(
                 child: CustomPaint(
-                    painter: _BalanceDecorPainter(isDark: isDark)),
+                    painter: _BalanceDecorPainter(isDark: false)),
               ),
             ),
             Padding(
@@ -228,7 +228,7 @@ class _BalanceCard extends StatelessWidget {
                         ),
                         child: Text(currency.code,
                             style: AppTextStyles.caption.copyWith(
-                                color: isDark ? AppColors.ink : Colors.white,
+                                color: Colors.white,
                                 fontWeight: FontWeight.w700)),
                       ),
                     ],
@@ -409,7 +409,7 @@ class _BalanceCardSkeleton extends StatelessWidget {
     return Container(
       height: 200,
       decoration: BoxDecoration(
-        color: isDark ? Colors.white : Colors.black,
+        color: isDark ? const Color(0xFF1A1A1B) : Colors.black,
         borderRadius: BorderRadius.circular(24),
       ),
       child: const Center(
