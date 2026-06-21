@@ -55,9 +55,25 @@ No `google-services.json` is needed — that's for Firebase. `google_sign_in` 6.
 - **"This app is blocked"**: your test account isn't in the consent-screen test-users list. Add it.
 - **"403 storageQuotaExceeded"**: the user's Drive is full. We surface this in the Backup screen.
 
+### "This app isn't verified" on the login screen
+
+This is **not** about your APK signing or "unknown sources" — it's Google's **OAuth consent-screen warning**. It appears because the consent screen is in **Testing** mode (or unverified Production) *and* the app requests a **sensitive scope** (`drive.appdata`). Google requires a formal verification review before showing that consent to the public without a warning.
+
+**To get past it (you / your test users):**
+1. On the warning, tap **Advanced** (bottom-left).
+2. Tap **"Go to Xpense Tracker (unsafe)"** → continue → grant access.
+
+This works as long as the account is listed under **OAuth consent screen → Test users** (up to 100). For personal use or a handful of users, this is the normal, correct path — **no verification needed**.
+
+**To remove the warning entirely (public release):** OAuth consent screen → **Publish app** (Production) → complete **verification** (privacy policy URL, app/domain ownership, scope justification). Can take days to weeks.
+
+> ⚠️ **7-day token expiry in Testing mode.** While the consent screen is in *Testing*, Google expires refresh tokens after **7 days** for sensitive scopes. This means silent sign-in (used by auto-backup) stops working roughly weekly and the user must reconnect under Settings → Backup. For reliable long-term auto-backup, publish to **Production (verified)**.
+
 ---
 
 ## 3. Release builds
+
+> **`flutter run` vs `flutter build apk`** — `flutter run [--release]` builds, installs, and *launches* the app on a connected device for testing; it does not give you a shareable `.apk`. To produce an installable APK file, use **`flutter build apk`** (see step **d** below). Outputs land in `build/app/outputs/flutter-apk/`.
 
 Debug-signed APKs from `flutter run` are fine for development, but to publish or sideload to other devices you need a release keystore + a separate OAuth client.
 

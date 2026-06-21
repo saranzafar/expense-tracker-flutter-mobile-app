@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/motion.dart';
 import '../../../core/theme.dart';
+import '../../../data/providers.dart';
 
 const _name = 'Saran Zafar';
 const _title = 'Software Engineer · Full-Stack';
@@ -105,6 +107,21 @@ class AboutPage extends StatelessWidget {
               child: Text('Made with ♥ in AJK, Pakistan',
                   style: AppTextStyles.caption
                       .copyWith(color: context.inkSubtle)),
+            ),
+            const SizedBox(height: 4),
+            Consumer(
+              builder: (context, ref, _) {
+                final version = ref.watch(appVersionProvider).maybeWhen(
+                      data: (v) => 'v$v',
+                      orElse: () => '',
+                    );
+                if (version.isEmpty) return const SizedBox.shrink();
+                return Center(
+                  child: Text('Xpense Tracker · $version',
+                      style: AppTextStyles.caption
+                          .copyWith(color: context.inkSubtle)),
+                );
+              },
             ),
           ],
         ),

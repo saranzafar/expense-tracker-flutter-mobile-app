@@ -5,6 +5,7 @@ import '../../../core/currency.dart';
 import '../../../core/motion.dart';
 import '../../../core/theme.dart';
 import '../../../data/onboarding_repo.dart';
+import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
 import '../../about/ui/about_page.dart';
 import '../../backup/ui/backup_page.dart';
@@ -76,7 +77,10 @@ class SettingsPage extends ConsumerWidget {
               _Tile(
                   icon: Icons.info_outline,
                   title: 'App version',
-                  subtitle: '1.0.0'),
+                  subtitle: ref.watch(appVersionProvider).maybeWhen(
+                        data: (v) => 'v$v',
+                        orElse: () => '…',
+                      )),
             ]),
             const SizedBox(height: 16),
             _Section(title: 'Developer', children: [

@@ -3,9 +3,13 @@
 A clean, offline-first personal finance app for Android. Track expenses, income, loans, and projects — with optional, private Google Drive backup.
 
 <p align="center">
-  <img src="assets/app-images/xpense-tracker-saranzafar-home.jpeg" width="240" />
-  <img src="assets/app-images/xpense-tracker-saranzafar-5.jpeg" width="240" />
-  <img src="assets/app-images/xpense-tracker-saranzafar-7.jpeg" width="240" />
+  <img src="assets/app-images/xpense-tracker-1.jpeg" width="240" />
+  <img src="assets/app-images/xpense-tracker-2.jpeg" width="240" />
+  <img src="assets/app-images/xpense-tracker-3.jpeg" width="240" />
+  <img src="assets/app-images/xpense-tracker-4.jpeg" width="240" />
+  <img src="assets/app-images/xpense-tracker-5.jpeg" width="240" />
+  <img src="assets/app-images/xpense-tracker-6.jpeg" width="240" />
+  <img src="assets/app-images/xpense-tracker-7.jpeg" width="240" />
 </p>
 
 ## Download
@@ -50,6 +54,7 @@ Enable **"Install from unknown sources"** on your device, then open the APK. The
 ### Projects
 - Create projects with name, description, start/end dates, total budget, advance payment, and category
 - Vertical payment timeline — tap to add further payments at any time
+- **Payments count as income** — the advance and every later payment flow straight into your available balance and appear in Recent Activity (recorded as income, tagged with the project name)
 - Filter by category and date range
 
 ### Finance Summary
@@ -63,7 +68,12 @@ Enable **"Install from unknown sources"** on your device, then open the APK. The
 
 ### Backup
 - Optional Google Drive backup to a **private app-data folder** (invisible in Drive UI)
-- Auto-backup on reconnect; manual backup from Settings
+- Backs up your **settings too** (currency, theme, display name) — a restore on a new device brings them all back
+- Auto-backup on app launch, on reconnect, and when the app is backgrounded (throttled)
+- **Conflict-safe** — auto-backup won't overwrite a newer cloud copy made on another device; it prompts you to restore instead
+- **Instant restore** — restored data shows immediately, no app restart needed
+- Surfaces failed backups so you're never left thinking you're protected when you aren't
+- Manual backup / restore from Settings → Backup
 
 ---
 
@@ -88,6 +98,14 @@ For Google Drive backup and release-signing setup, see [SETUP.md](SETUP.md).
 ---
 
 ## Changelog
+
+### Unreleased
+- Projects: advance and timeline payments now post as income — they raise your available balance and show in Recent Activity (editing/deleting a project payment stays in sync with its income record, and vice-versa)
+- Backup now includes app settings (currency, theme, display name, balance visibility) and restores them too
+- Restore is instant — no app restart required — and clears stale `-wal`/`-shm` files so a restored database can't be corrupted by a replayed write-ahead log
+- Auto-backup conflict guard: skips (and warns) instead of overwriting a cloud backup that's newer than this device's last upload
+- Failed auto-backups are surfaced on the Backup page (network errors treated as transient)
+- Extra auto-backup trigger when the app is sent to the background (30-minute throttle) so in-session edits aren't lost
 
 ### [v1.0.1](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/tag/v1.0.1)
 - Custom date range picker on the home chart (daily/monthly buckets auto-selected)

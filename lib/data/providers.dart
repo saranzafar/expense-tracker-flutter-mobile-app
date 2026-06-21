@@ -1,5 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../core/chart_data.dart';
 import '../core/date_range.dart';
@@ -7,6 +8,13 @@ import 'database.dart';
 
 final connectivityProvider = StreamProvider<List<ConnectivityResult>>((ref) =>
     Connectivity().onConnectivityChanged);
+
+/// App version name (from the native build / pubspec), e.g. "1.0.2".
+/// Read at runtime so it never goes stale on a version bump.
+final appVersionProvider = FutureProvider<String>((_) async {
+  final info = await PackageInfo.fromPlatform();
+  return info.version;
+});
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
