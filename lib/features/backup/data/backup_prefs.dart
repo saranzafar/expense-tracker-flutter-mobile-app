@@ -5,6 +5,8 @@ const _kEnabled = 'backup_enabled';
 const _kWifiOnly = 'backup_wifi_only';
 const _kLastBackupAt = 'last_backup_at';
 const _kPendingRestoreChecked = 'pending_restore_checked';
+const _kLastError = 'backup_last_error';
+const _kRemoteNewer = 'backup_remote_newer';
 
 class BackupPrefs {
   final bool enabled;
@@ -12,11 +14,23 @@ class BackupPrefs {
   final int lastBackupAtMs; // 0 = never
   final bool pendingRestoreChecked;
 
+  /// Last auto-backup failure message (non-transient), or null if the last
+  /// attempt succeeded. Surfaced on the Backup page so silent failures don't
+  /// leave the user thinking they're protected when they aren't.
+  final String? lastError;
+
+  /// True when the cloud backup looks newer than this device's last backup
+  /// (e.g. another device backed up more recently). Auto-backup is skipped to
+  /// avoid clobbering it; the user is prompted to restore instead.
+  final bool remoteNewer;
+
   const BackupPrefs({
     required this.enabled,
     required this.wifiOnly,
     required this.lastBackupAtMs,
     required this.pendingRestoreChecked,
+    this.lastError,
+    this.remoteNewer = false,
   });
 
   static const defaults = BackupPrefs(
@@ -24,6 +38,8 @@ class BackupPrefs {
     wifiOnly: true,
     lastBackupAtMs: 0,
     pendingRestoreChecked: false,
+    lastError: null,
+    remoteNewer: false,
   );
 
   DateTime? get lastBackupAt => lastBackupAtMs == 0
@@ -35,6 +51,9 @@ class BackupPrefs {
     bool? wifiOnly,
     int? lastBackupAtMs,
     bool? pendingRestoreChecked,
+    // Use sentinels so null can be assigned explicitly (to clear the error).
+    Object? lastError = _unset,
+    bool? remoteNewer,
   }) =>
       BackupPrefs(
         enabled: enabled ?? this.enabled,
@@ -42,8 +61,14 @@ class BackupPrefs {
         lastBackupAtMs: lastBackupAtMs ?? this.lastBackupAtMs,
         pendingRestoreChecked:
             pendingRestoreChecked ?? this.pendingRestoreChecked,
+        lastError: identical(lastError, _unset)
+            ? this.lastError
+            : lastError as String?,
+        remoteNewer: remoteNewer ?? this.remoteNewer,
       );
 }
+
+const _unset = Object();
 
 class BackupPrefsRepo {
   Future<BackupPrefs> read() async {
@@ -53,6 +78,8 @@ class BackupPrefsRepo {
       wifiOnly: p.getBool(_kWifiOnly) ?? true,
       lastBackupAtMs: p.getInt(_kLastBackupAt) ?? 0,
       pendingRestoreChecked: p.getBool(_kPendingRestoreChecked) ?? false,
+      lastError: p.getString(_kLastError),
+      remoteNewer: p.getBool(_kRemoteNewer) ?? false,
     );
   }
 
@@ -75,6 +102,20 @@ class BackupPrefsRepo {
     final p = await SharedPreferences.getInstance();
     await p.setBool(_kPendingRestoreChecked, v);
   }
+
+  Future<void> writeLastError(String? v) async {
+    final p = await SharedPreferences.getInstance();
+    if (v == null) {
+      await p.remove(_kLastError);
+    } else {
+      await p.setString(_kLastError, v);
+    }
+  }
+
+  Future<void> writeRemoteNewer(bool v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_kRemoteNewer, v);
+  }
 }
 
 final backupPrefsRepoProvider =
@@ -96,8 +137,23 @@ class BackupPrefsNotifier extends Notifier<BackupPrefs> {
 
   Future<void> markBackupNow() async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    state = state.copyWith(lastBackupAtMs: now);
-    await ref.read(backupPrefsRepoProvider).writeLastBackupAt(now);
+    // A successful backup clears any prior failure / conflict state.
+    state = state.copyWith(
+        lastBackupAtMs: now, lastError: null, remoteNewer: false);
+    final repo = ref.read(backupPrefsRepoProvider);
+    await repo.writeLastBackupAt(now);
+    await repo.writeLastError(null);
+    await repo.writeRemoteNewer(false);
+  }
+
+  Future<void> setLastError(String? v) async {
+    state = state.copyWith(lastError: v);
+    await ref.read(backupPrefsRepoProvider).writeLastError(v);
+  }
+
+  Future<void> setRemoteNewer(bool v) async {
+    state = state.copyWith(remoteNewer: v);
+    await ref.read(backupPrefsRepoProvider).writeRemoteNewer(v);
   }
 
   Future<void> markPendingRestoreChecked() async {

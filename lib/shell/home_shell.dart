@@ -55,7 +55,8 @@ class HomeShell extends ConsumerStatefulWidget {
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends ConsumerState<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell>
+    with WidgetsBindingObserver {
   bool _exitArmed = false;
   bool _wasOnline = false;
   bool _isSyncingFromProvider = false;
@@ -64,6 +65,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     Connectivity().checkConnectivity().then((results) {
       if (mounted) {
         _wasOnline = results.any((r) => r != ConnectivityResult.none);
@@ -73,8 +75,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back up recent changes when the app goes to the background, with a
+    // shorter throttle than the launch trigger so edits made during a session
+    // aren't lost if the OS kills the app before the next launch.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      ref
+          .read(backupRepoProvider)
+          .autoBackupIfDue(minInterval: const Duration(minutes: 30));
+    }
   }
 
   Future<void> _onCameOnline() async {

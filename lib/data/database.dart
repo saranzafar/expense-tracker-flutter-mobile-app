@@ -39,6 +39,10 @@ class Records extends Table {
   DateTimeColumn get returnedAt => dateTime().nullable()();
   TextColumn get categoryId => text().nullable()();
 
+  /// When set, this income record is the money side of a project payment
+  /// (see [ProjectPayments]). Used to keep the two in sync on edit/delete.
+  TextColumn get projectPaymentId => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -115,7 +119,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -134,6 +138,27 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await m.createTable(projects);
             await m.createTable(projectPayments);
+          }
+          if (from < 5) {
+            await m.addColumn(records, records.projectPaymentId);
+            // Backfill: every existing project payment becomes an income
+            // record so older projects also count toward the balance.
+            final pays = await select(projectPayments).get();
+            for (final pay in pays) {
+              final proj = await (select(projects)
+                    ..where((p) => p.id.equals(pay.projectId)))
+                  .getSingleOrNull();
+              await into(records).insert(
+                _projectIncomeCompanion(
+                  projectName: proj?.name ?? 'Project',
+                  projectCategoryId: proj?.categoryId,
+                  amountMinor: pay.amountMinor,
+                  note: pay.note,
+                  paidAt: pay.paidAt,
+                  paymentId: pay.id,
+                ),
+              );
+            }
           }
         },
       );
@@ -199,8 +224,34 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertRecord(RecordsCompanion data) =>
       into(records).insertOnConflictUpdate(data);
 
-  Future<int> deleteRecord(String id) =>
-      (delete(records)..where((r) => r.id.equals(id))).go();
+  Future<int> deleteRecord(String id) async {
+    return transaction(() async {
+      final row =
+          await (select(records)..where((r) => r.id.equals(id))).getSingleOrNull();
+      // If this record is the money side of a project payment, drop the
+      // payment too so the project's "Paid" total stays consistent.
+      final paymentId = row?.projectPaymentId;
+      if (paymentId != null) {
+        await (delete(projectPayments)..where((p) => p.id.equals(paymentId)))
+            .go();
+      }
+      return (delete(records)..where((r) => r.id.equals(id))).go();
+    });
+  }
+
+  /// Keep a project payment in sync when its linked income record is edited
+  /// from the Records screen.
+  Future<void> syncProjectPaymentFromRecord(
+    String paymentId, {
+    required int amountMinor,
+    required DateTime paidAt,
+  }) =>
+      (update(projectPayments)..where((p) => p.id.equals(paymentId))).write(
+        ProjectPaymentsCompanion(
+          amountMinor: Value(amountMinor),
+          paidAt: Value(paidAt),
+        ),
+      );
 
   Future<void> markLoanReturned(String id, {required bool returned}) async {
     await (update(records)..where((r) => r.id.equals(id))).write(
@@ -298,8 +349,21 @@ class AppDatabase extends _$AppDatabase {
       into(projects).insertOnConflictUpdate(data);
 
   Future<void> deleteProject(String id) async {
-    await (delete(projectPayments)..where((p) => p.projectId.equals(id))).go();
-    await (delete(projects)..where((p) => p.id.equals(id))).go();
+    await transaction(() async {
+      final paymentIds = await (selectOnly(projectPayments)
+            ..addColumns([projectPayments.id])
+            ..where(projectPayments.projectId.equals(id)))
+          .map((r) => r.read(projectPayments.id)!)
+          .get();
+      if (paymentIds.isNotEmpty) {
+        await (delete(records)
+              ..where((r) => r.projectPaymentId.isIn(paymentIds)))
+            .go();
+      }
+      await (delete(projectPayments)..where((p) => p.projectId.equals(id)))
+          .go();
+      await (delete(projects)..where((p) => p.id.equals(id))).go();
+    });
   }
 
   // ── Project Payments ─────────────────────────────────────────────────────────
@@ -310,11 +374,70 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(p) => OrderingTerm.asc(p.paidAt)]))
           .watch();
 
-  Future<void> addProjectPayment(ProjectPaymentsCompanion data) =>
-      into(projectPayments).insert(data);
+  /// Records a project payment AND its matching income record (the money the
+  /// project earned), atomically. The income record flows into the balance,
+  /// charts, totals and recent activity automatically.
+  Future<void> addProjectPayment({
+    required String projectId,
+    required String projectName,
+    String? projectCategoryId,
+    required int amountMinor,
+    String? note,
+    required DateTime paidAt,
+  }) async {
+    final paymentId = _uuid.v4();
+    await transaction(() async {
+      await into(projectPayments).insert(
+        ProjectPaymentsCompanion.insert(
+          id: Value(paymentId),
+          projectId: projectId,
+          amountMinor: amountMinor,
+          note: Value(note),
+          paidAt: paidAt,
+        ),
+      );
+      await into(records).insert(
+        _projectIncomeCompanion(
+          projectName: projectName,
+          projectCategoryId: projectCategoryId,
+          amountMinor: amountMinor,
+          note: note,
+          paidAt: paidAt,
+          paymentId: paymentId,
+        ),
+      );
+    });
+  }
 
-  Future<void> deleteProjectPayment(String id) =>
-      (delete(projectPayments)..where((p) => p.id.equals(id))).go();
+  Future<void> deleteProjectPayment(String id) async {
+    await transaction(() async {
+      await (delete(records)..where((r) => r.projectPaymentId.equals(id))).go();
+      await (delete(projectPayments)..where((p) => p.id.equals(id))).go();
+    });
+  }
+
+  /// Builds the income [RecordsCompanion] that mirrors a project payment.
+  static RecordsCompanion _projectIncomeCompanion({
+    required String projectName,
+    required String? projectCategoryId,
+    required int amountMinor,
+    required String? note,
+    required DateTime paidAt,
+    required String paymentId,
+  }) {
+    final trimmedNote = note?.trim();
+    final desc = (trimmedNote != null && trimmedNote.isNotEmpty)
+        ? 'Project: $projectName — $trimmedNote'
+        : 'Project: $projectName';
+    return RecordsCompanion.insert(
+      amountMinor: amountMinor,
+      type: RecordType.income,
+      description: Value(desc),
+      occurredAt: paidAt,
+      categoryId: Value(projectCategoryId),
+      projectPaymentId: Value(paymentId),
+    );
+  }
 }
 
 LazyDatabase _openConnection() {

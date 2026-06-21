@@ -51,6 +51,11 @@ class SettingsRepo {
   }
 }
 
+/// Public string<->ThemeMode helpers, used when (de)serializing settings for
+/// cloud backup so the user's theme survives a restore on a new device.
+ThemeMode themeModeFromString(String? v) => _parseThemeMode(v);
+String themeModeToString(ThemeMode m) => _encodeThemeMode(m);
+
 ThemeMode _parseThemeMode(String? v) {
   switch (v) {
     case 'light':

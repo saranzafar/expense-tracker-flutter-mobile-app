@@ -136,15 +136,17 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
       endDate: Value(_endDate),
     ));
 
-    // If this is a new project and advance is provided, add first payment
+    // If this is a new project and advance is provided, add first payment.
+    // This also creates an income record so the advance lands in the balance.
     if (!_isEdit && advanceMinor > 0) {
-      await db.addProjectPayment(ProjectPaymentsCompanion(
-        id: Value(_uuid.v4()),
-        projectId: Value(id),
-        amountMinor: Value(advanceMinor),
-        note: const Value('Advance'),
-        paidAt: Value(_startDate),
-      ));
+      await db.addProjectPayment(
+        projectId: id,
+        projectName: _name.text.trim(),
+        projectCategoryId: _selectedCategoryId,
+        amountMinor: advanceMinor,
+        note: 'Advance',
+        paidAt: _startDate,
+      );
     }
 
     if (mounted) Navigator.of(context).pop();

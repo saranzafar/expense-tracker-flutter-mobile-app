@@ -244,6 +244,16 @@ class _RecordFormPageState extends ConsumerState<RecordFormPage> {
       returnedAt: Value(widget.existing?.returnedAt),
       categoryId: Value(!_isLoan ? _selectedCategoryId : null),
     ));
+    // If this income record mirrors a project payment, keep the payment's
+    // amount and date in sync so the project's totals don't drift.
+    final paymentId = widget.existing?.projectPaymentId;
+    if (paymentId != null) {
+      await db.syncProjectPaymentFromRecord(
+        paymentId,
+        amountMinor: minor,
+        paidAt: _occurredAt,
+      );
+    }
     if (mounted) Navigator.of(context).pop();
   }
 

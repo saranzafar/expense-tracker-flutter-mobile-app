@@ -51,6 +51,13 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               _SectionLabel('Backup'),
               const SizedBox(height: 8),
               _StatusCard(prefs: prefs, busy: _busy),
+              if (!_busy && (prefs.remoteNewer || prefs.lastError != null)) ...[
+                const SizedBox(height: 12),
+                _BackupWarning(
+                  prefs: prefs,
+                  onRestore: _onRestoreManual,
+                ),
+              ],
               const SizedBox(height: 12),
               _Toggles(prefs: prefs),
               const SizedBox(height: 16),
@@ -196,6 +203,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         return 'Backup already in progress.';
       case BackupOutcome.quotaExceeded:
         return 'Drive storage full.';
+      case BackupOutcome.remoteNewer:
+        return 'Cloud has newer data — restore instead.';
       case BackupOutcome.unknownError:
         return 'Backup failed. ${r.message ?? ''}';
     }
@@ -204,7 +213,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   String _restoreMessage(RestoreResult r) {
     switch (r.outcome) {
       case RestoreOutcome.success:
-        return 'Restored ✓ Reopen the app to see your data.';
+        return 'Restored ✓';
       case RestoreOutcome.notSignedIn:
         return 'Sign in first.';
       case RestoreOutcome.notFound:
@@ -372,6 +381,70 @@ class _StatusCard extends StatelessWidget {
                   style: AppTextStyles.title.copyWith(color: context.ink)),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackupWarning extends StatelessWidget {
+  const _BackupWarning({required this.prefs, required this.onRestore});
+  final BackupPrefs prefs;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    // Conflict (cloud newer) takes priority over a generic failure message.
+    final isConflict = prefs.remoteNewer;
+    final message = isConflict
+        ? 'Your Google Drive backup is newer than this device. '
+            'Auto-backup is paused to avoid overwriting it — restore to sync up.'
+        : (prefs.lastError ?? 'Last automatic backup failed.');
+    final color = isConflict ? AppColors.green : AppColors.danger;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                  isConflict
+                      ? Icons.cloud_sync_outlined
+                      : Icons.error_outline,
+                  size: 18,
+                  color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(message,
+                    style: AppTextStyles.caption
+                        .copyWith(color: context.ink, height: 1.4)),
+              ),
+            ],
+          ),
+          if (isConflict) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.green,
+                  foregroundColor: AppColors.ink,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                ),
+                onPressed: onRestore,
+                icon: const Icon(Icons.cloud_download_outlined, size: 18),
+                label: const Text('Restore'),
+              ),
+            ),
+          ],
         ],
       ),
     );

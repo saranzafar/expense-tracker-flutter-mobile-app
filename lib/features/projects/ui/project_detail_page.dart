@@ -1,8 +1,6 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/currency.dart';
 import '../../../core/formatters.dart';
@@ -11,8 +9,6 @@ import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
 import 'project_form_page.dart';
-
-const _uuid = Uuid();
 
 class ProjectDetailPage extends ConsumerWidget {
   const ProjectDetailPage({super.key, required this.project});
@@ -294,14 +290,12 @@ class _AddPaymentSheetState extends ConsumerState<_AddPaymentSheet> {
     if (!_formKey.currentState!.validate()) return;
     final minor = int.parse(_amount.text) * 100;
     await ref.read(databaseProvider).addProjectPayment(
-          ProjectPaymentsCompanion(
-            id: Value(_uuid.v4()),
-            projectId: Value(widget.project.id),
-            amountMinor: Value(minor),
-            note: Value(
-                _note.text.trim().isEmpty ? null : _note.text.trim()),
-            paidAt: Value(_paidAt),
-          ),
+          projectId: widget.project.id,
+          projectName: widget.project.name,
+          projectCategoryId: widget.project.categoryId,
+          amountMinor: minor,
+          note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+          paidAt: _paidAt,
         );
     if (mounted) Navigator.of(context).pop();
   }

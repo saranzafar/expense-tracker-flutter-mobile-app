@@ -81,6 +81,12 @@ class $RecordsTable extends Records with TableInfo<$RecordsTable, RecordRow> {
   late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
       'category_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _projectPaymentIdMeta =
+      const VerificationMeta('projectPaymentId');
+  @override
+  late final GeneratedColumn<String> projectPaymentId = GeneratedColumn<String>(
+      'project_payment_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -93,7 +99,8 @@ class $RecordsTable extends Records with TableInfo<$RecordsTable, RecordRow> {
         expectedReturnAt,
         returned,
         returnedAt,
-        categoryId
+        categoryId,
+        projectPaymentId
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -163,6 +170,12 @@ class $RecordsTable extends Records with TableInfo<$RecordsTable, RecordRow> {
           categoryId.isAcceptableOrUnknown(
               data['category_id']!, _categoryIdMeta));
     }
+    if (data.containsKey('project_payment_id')) {
+      context.handle(
+          _projectPaymentIdMeta,
+          projectPaymentId.isAcceptableOrUnknown(
+              data['project_payment_id']!, _projectPaymentIdMeta));
+    }
     return context;
   }
 
@@ -194,6 +207,8 @@ class $RecordsTable extends Records with TableInfo<$RecordsTable, RecordRow> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}returned_at']),
       categoryId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}category_id']),
+      projectPaymentId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}project_payment_id']),
     );
   }
 
@@ -218,6 +233,10 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
   final bool returned;
   final DateTime? returnedAt;
   final String? categoryId;
+
+  /// When set, this income record is the money side of a project payment
+  /// (see [ProjectPayments]). Used to keep the two in sync on edit/delete.
+  final String? projectPaymentId;
   const RecordRow(
       {required this.id,
       required this.amountMinor,
@@ -229,7 +248,8 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
       this.expectedReturnAt,
       required this.returned,
       this.returnedAt,
-      this.categoryId});
+      this.categoryId,
+      this.projectPaymentId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -255,6 +275,9 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
     }
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<String>(categoryId);
+    }
+    if (!nullToAbsent || projectPaymentId != null) {
+      map['project_payment_id'] = Variable<String>(projectPaymentId);
     }
     return map;
   }
@@ -282,6 +305,9 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
+      projectPaymentId: projectPaymentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(projectPaymentId),
     );
   }
 
@@ -302,6 +328,7 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
       returned: serializer.fromJson<bool>(json['returned']),
       returnedAt: serializer.fromJson<DateTime?>(json['returnedAt']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
+      projectPaymentId: serializer.fromJson<String?>(json['projectPaymentId']),
     );
   }
   @override
@@ -320,6 +347,7 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
       'returned': serializer.toJson<bool>(returned),
       'returnedAt': serializer.toJson<DateTime?>(returnedAt),
       'categoryId': serializer.toJson<String?>(categoryId),
+      'projectPaymentId': serializer.toJson<String?>(projectPaymentId),
     };
   }
 
@@ -334,7 +362,8 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
           Value<DateTime?> expectedReturnAt = const Value.absent(),
           bool? returned,
           Value<DateTime?> returnedAt = const Value.absent(),
-          Value<String?> categoryId = const Value.absent()}) =>
+          Value<String?> categoryId = const Value.absent(),
+          Value<String?> projectPaymentId = const Value.absent()}) =>
       RecordRow(
         id: id ?? this.id,
         amountMinor: amountMinor ?? this.amountMinor,
@@ -350,6 +379,9 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
         returned: returned ?? this.returned,
         returnedAt: returnedAt.present ? returnedAt.value : this.returnedAt,
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
+        projectPaymentId: projectPaymentId.present
+            ? projectPaymentId.value
+            : this.projectPaymentId,
       );
   RecordRow copyWithCompanion(RecordsCompanion data) {
     return RecordRow(
@@ -373,6 +405,9 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
           data.returnedAt.present ? data.returnedAt.value : this.returnedAt,
       categoryId:
           data.categoryId.present ? data.categoryId.value : this.categoryId,
+      projectPaymentId: data.projectPaymentId.present
+          ? data.projectPaymentId.value
+          : this.projectPaymentId,
     );
   }
 
@@ -389,7 +424,8 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
           ..write('expectedReturnAt: $expectedReturnAt, ')
           ..write('returned: $returned, ')
           ..write('returnedAt: $returnedAt, ')
-          ..write('categoryId: $categoryId')
+          ..write('categoryId: $categoryId, ')
+          ..write('projectPaymentId: $projectPaymentId')
           ..write(')'))
         .toString();
   }
@@ -406,7 +442,8 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
       expectedReturnAt,
       returned,
       returnedAt,
-      categoryId);
+      categoryId,
+      projectPaymentId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -421,7 +458,8 @@ class RecordRow extends DataClass implements Insertable<RecordRow> {
           other.expectedReturnAt == this.expectedReturnAt &&
           other.returned == this.returned &&
           other.returnedAt == this.returnedAt &&
-          other.categoryId == this.categoryId);
+          other.categoryId == this.categoryId &&
+          other.projectPaymentId == this.projectPaymentId);
 }
 
 class RecordsCompanion extends UpdateCompanion<RecordRow> {
@@ -436,6 +474,7 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
   final Value<bool> returned;
   final Value<DateTime?> returnedAt;
   final Value<String?> categoryId;
+  final Value<String?> projectPaymentId;
   final Value<int> rowid;
   const RecordsCompanion({
     this.id = const Value.absent(),
@@ -449,6 +488,7 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
     this.returned = const Value.absent(),
     this.returnedAt = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.projectPaymentId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RecordsCompanion.insert({
@@ -463,6 +503,7 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
     this.returned = const Value.absent(),
     this.returnedAt = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.projectPaymentId = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : amountMinor = Value(amountMinor),
         type = Value(type),
@@ -479,6 +520,7 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
     Expression<bool>? returned,
     Expression<DateTime>? returnedAt,
     Expression<String>? categoryId,
+    Expression<String>? projectPaymentId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -493,6 +535,7 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
       if (returned != null) 'returned': returned,
       if (returnedAt != null) 'returned_at': returnedAt,
       if (categoryId != null) 'category_id': categoryId,
+      if (projectPaymentId != null) 'project_payment_id': projectPaymentId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -509,6 +552,7 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
       Value<bool>? returned,
       Value<DateTime?>? returnedAt,
       Value<String?>? categoryId,
+      Value<String?>? projectPaymentId,
       Value<int>? rowid}) {
     return RecordsCompanion(
       id: id ?? this.id,
@@ -522,6 +566,7 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
       returned: returned ?? this.returned,
       returnedAt: returnedAt ?? this.returnedAt,
       categoryId: categoryId ?? this.categoryId,
+      projectPaymentId: projectPaymentId ?? this.projectPaymentId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -563,6 +608,9 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
     if (categoryId.present) {
       map['category_id'] = Variable<String>(categoryId.value);
     }
+    if (projectPaymentId.present) {
+      map['project_payment_id'] = Variable<String>(projectPaymentId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -583,6 +631,7 @@ class RecordsCompanion extends UpdateCompanion<RecordRow> {
           ..write('returned: $returned, ')
           ..write('returnedAt: $returnedAt, ')
           ..write('categoryId: $categoryId, ')
+          ..write('projectPaymentId: $projectPaymentId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1628,6 +1677,7 @@ typedef $$RecordsTableCreateCompanionBuilder = RecordsCompanion Function({
   Value<bool> returned,
   Value<DateTime?> returnedAt,
   Value<String?> categoryId,
+  Value<String?> projectPaymentId,
   Value<int> rowid,
 });
 typedef $$RecordsTableUpdateCompanionBuilder = RecordsCompanion Function({
@@ -1642,6 +1692,7 @@ typedef $$RecordsTableUpdateCompanionBuilder = RecordsCompanion Function({
   Value<bool> returned,
   Value<DateTime?> returnedAt,
   Value<String?> categoryId,
+  Value<String?> projectPaymentId,
   Value<int> rowid,
 });
 
@@ -1689,6 +1740,10 @@ class $$RecordsTableFilterComposer
 
   ColumnFilters<String> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get projectPaymentId => $composableBuilder(
+      column: $table.projectPaymentId,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$RecordsTableOrderingComposer
@@ -1734,6 +1789,10 @@ class $$RecordsTableOrderingComposer
 
   ColumnOrderings<String> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get projectPaymentId => $composableBuilder(
+      column: $table.projectPaymentId,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$RecordsTableAnnotationComposer
@@ -1777,6 +1836,9 @@ class $$RecordsTableAnnotationComposer
 
   GeneratedColumn<String> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => column);
+
+  GeneratedColumn<String> get projectPaymentId => $composableBuilder(
+      column: $table.projectPaymentId, builder: (column) => column);
 }
 
 class $$RecordsTableTableManager extends RootTableManager<
@@ -1813,6 +1875,7 @@ class $$RecordsTableTableManager extends RootTableManager<
             Value<bool> returned = const Value.absent(),
             Value<DateTime?> returnedAt = const Value.absent(),
             Value<String?> categoryId = const Value.absent(),
+            Value<String?> projectPaymentId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RecordsCompanion(
@@ -1827,6 +1890,7 @@ class $$RecordsTableTableManager extends RootTableManager<
             returned: returned,
             returnedAt: returnedAt,
             categoryId: categoryId,
+            projectPaymentId: projectPaymentId,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1841,6 +1905,7 @@ class $$RecordsTableTableManager extends RootTableManager<
             Value<bool> returned = const Value.absent(),
             Value<DateTime?> returnedAt = const Value.absent(),
             Value<String?> categoryId = const Value.absent(),
+            Value<String?> projectPaymentId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RecordsCompanion.insert(
@@ -1855,6 +1920,7 @@ class $$RecordsTableTableManager extends RootTableManager<
             returned: returned,
             returnedAt: returnedAt,
             categoryId: categoryId,
+            projectPaymentId: projectPaymentId,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

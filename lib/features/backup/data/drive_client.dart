@@ -25,11 +25,16 @@ class BackupMetadata {
   final int recordCount;
   final String appVersion;
 
+  /// App settings (currency, theme, display name, balance visibility) so a
+  /// restore on a new device brings these back too — not just the database.
+  final Map<String, dynamic>? settings;
+
   const BackupMetadata({
     required this.schemaVersion,
     required this.createdAt,
     required this.recordCount,
     required this.appVersion,
+    this.settings,
   });
 
   String toJsonString() => jsonEncode({
@@ -37,6 +42,7 @@ class BackupMetadata {
         'createdAt': createdAt.toIso8601String(),
         'recordCount': recordCount,
         'appVersion': appVersion,
+        if (settings != null) 'settings': settings,
       });
 
   static BackupMetadata? tryParse(String? raw) {
@@ -49,6 +55,7 @@ class BackupMetadata {
             DateTime.fromMillisecondsSinceEpoch(0),
         recordCount: m['recordCount'] as int? ?? 0,
         appVersion: m['appVersion'] as String? ?? 'unknown',
+        settings: m['settings'] as Map<String, dynamic>?,
       );
     } catch (_) {
       return null;
