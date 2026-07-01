@@ -14,13 +14,13 @@ A clean, offline-first personal finance app for Android. Track expenses, income,
 
 ## Download
 
-**[⬇ Download v1.0.1 — latest release](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/tag/v1.0.1)**
+**[⬇ Download v1.0.2 — latest release](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/tag/v1.0.2)**
 
 | APK | Architecture | Size |
 |-----|-------------|------|
-| [`app-arm64-v8a-release.apk`](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/download/v1.0.1/app-arm64-v8a-release.apk) | 64-bit · recommended (~95 % of devices) | 21.6 MB |
-| [`app-armeabi-v7a-release.apk`](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/download/v1.0.1/app-armeabi-v7a-release.apk) | 32-bit legacy | 19.1 MB |
-| [`app-x86_64-release.apk`](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/download/v1.0.1/app-x86_64-release.apk) | x86 / emulators | 23.1 MB |
+| [`app-arm64-v8a-release.apk`](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/download/v1.0.2/app-arm64-v8a-release.apk) | 64-bit · recommended (~95 % of devices) | 21.6 MB |
+| [`app-armeabi-v7a-release.apk`](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/download/v1.0.2/app-armeabi-v7a-release.apk) | 32-bit legacy | 19.1 MB |
+| [`app-x86_64-release.apk`](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/download/v1.0.2/app-x86_64-release.apk) | x86 / emulators | 23.2 MB |
 
 Enable **"Install from unknown sources"** on your device, then open the APK. The app works fully offline — Google Sign-In is optional and only needed for Drive backup.
 
@@ -60,11 +60,18 @@ Enable **"Install from unknown sources"** on your device, then open the APK. The
 ### Finance Summary
 - Records page shows income / expense / net totals for the current filter — updates live as filters change
 
+### Xpy — your money companion
+- A **fully code-drawn pixel cat** (no image assets) that lives on the home screen and is the face of the app
+- Mood tracks your month's net — happy when saving, worried when overspending, sleepy when there's nothing to track
+- Always alive: breathing, blinking, ear-twitches, yawns, tail-wags, hops and little walks
+- Reacts to your money (sparkles on income, a crumb on spend) and to you — **tap to pet** for red hearts and a rotating set of facial expressions
+
 ### Design
-- Material 3, fully light and dark-mode aware
+- Material 3, fully light and dark-mode aware, with tabular figures so numbers never jitter
 - Frosted glass floating nav bar with smooth decoupled pill animation
+- Soft card depth, uppercase overline section labels, staggered entrance + press feedback
 - Smooth motion throughout (fade, size, cross-fade transitions)
-- 10 currencies, system / light / dark theme toggle
+- **Pull-to-refresh** on every main tab; 10 currencies, system / light / dark theme toggle
 
 ### Backup
 - Optional Google Drive backup to a **private app-data folder** (invisible in Drive UI)
@@ -99,13 +106,19 @@ For Google Drive backup and release-signing setup, see [SETUP.md](SETUP.md).
 
 ## Changelog
 
-### Unreleased
+### [v1.0.2](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/tag/v1.0.2)
+- **Meet Xpy** — a code-drawn pixel-cat companion on the home screen. Its mood follows your month's net (saving = happy, overspending = worried, quiet = sleepy); it breathes, blinks, looks around, twitches its ears, yawns, wags, hops and takes little walks on its own; reacts when your balance moves (sparkles for income, red hearts when you pet it); and cycles fun expressions (wink, ^_^, O_O, heart-eyes, star-eyes, tongue, dizzy) each time you tap it
+- Home chart: tap the **Income / Expense legend** to hide a line — the chart rescales to the remaining one
+- **Loans**: rich filter sheet (type · category · date range) + a Lent / Borrowed / Net summary board
+- **Projects**: Budget / Received / Remaining summary board that reacts to the active filter
+- **Pull-to-refresh** on Home, Records, Loans and Projects to force-reload if anything ever looks stale
+- **Reliable auto-backup**: fixed a launch race so it fires when Google sign-in lands, plus a debounced backup after any edit — the same backup the manual button runs, no extra permissions
 - Projects: advance and timeline payments now post as income — they raise your available balance and show in Recent Activity (editing/deleting a project payment stays in sync with its income record, and vice-versa)
 - Backup now includes app settings (currency, theme, display name, balance visibility) and restores them too
 - Restore is instant — no app restart required — and clears stale `-wal`/`-shm` files so a restored database can't be corrupted by a replayed write-ahead log
 - Auto-backup conflict guard: skips (and warns) instead of overwriting a cloud backup that's newer than this device's last upload
 - Failed auto-backups are surfaced on the Backup page (network errors treated as transient)
-- Extra auto-backup trigger when the app is sent to the background (30-minute throttle) so in-session edits aren't lost
+- **UI polish**: tabular figures so numbers don't jitter while animating, softer card depth, uppercase overline section labels, staggered home entrance + press feedback, redesigned record tiles and day-group headers with daily net totals
 
 ### [v1.0.1](https://github.com/saranzafar/expense-tracker-flutter-mobile-app/releases/tag/v1.0.1)
 - Custom date range picker on the home chart (daily/monthly buckets auto-selected)
