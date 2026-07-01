@@ -243,14 +243,38 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
 
                   // ── Day group (shifted by 1) ──────────────────────────────
                   final g = groups[i - 1];
+                  final dayNet = g.items.fold<int>(
+                    0,
+                    (s, r) => s +
+                        (r.type == RecordType.income
+                            ? r.amountMinor
+                            : r.type == RecordType.expense
+                                ? -r.amountMinor
+                                : 0),
+                  );
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
-                        child: Text(formatDayHeader(g.day),
-                            style: AppTextStyles.caption
-                                .copyWith(color: context.inkMuted)),
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(formatDayHeader(g.day).toUpperCase(),
+                                style: AppTextStyles.overline
+                                    .copyWith(color: context.inkSubtle)),
+                            if (dayNet != 0)
+                              Text(
+                                '${dayNet > 0 ? '+' : '−'} ${formatMoney(dayNet.abs(), currency)}',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: dayNet > 0
+                                      ? AppColors.green
+                                      : context.inkMuted,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                       for (final r in g.items)
                         FadeIn(

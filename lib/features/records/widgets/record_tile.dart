@@ -50,24 +50,37 @@ class RecordTile extends ConsumerWidget {
         ? formatMoneySigned(record.amountMinor, currency, negative: false)
         : formatMoneySigned(record.amountMinor, currency, negative: true);
 
+    // Category name (expenses/income only) folded into the subline.
+    String? catName;
+    if (!isLoan && record.categoryId != null) {
+      for (final c in cats) {
+        if (c.id == record.categoryId) {
+          catName = c.name;
+          break;
+        }
+      }
+    }
+    final String subline =
+        catName != null ? '$catName · $subtitle' : subtitle;
+
     return InkWell(
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) =>
             RecordFormPage(type: record.type, existing: record),
       )),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadii.inner),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
         child: Row(
           children: [
             Container(
-              height: 40,
-              width: 40,
+              height: 44,
+              width: 44,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 border: Border.all(color: context.hairline),
-                borderRadius: BorderRadius.circular(12),
-                color: isLoan ? AppColors.greenSoft : null,
+                borderRadius: BorderRadius.circular(AppRadii.chip),
+                color: isIncome || isLoan ? AppColors.greenSoft : null,
               ),
               child: Icon(icon,
                   color: isIncome ? AppColors.green : context.ink, size: 20),
@@ -83,45 +96,20 @@ class RecordTile extends ConsumerWidget {
                           fontWeight: FontWeight.w600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
+                  const SizedBox(height: 3),
+                  Text(subline,
                       style: AppTextStyles.caption
-                          .copyWith(color: context.inkMuted)),
-                  if (!isLoan && record.categoryId != null) ...[
-                    const SizedBox(height: 4),
-                    Builder(builder: (_) {
-                      String? catName;
-                      for (final c in cats) {
-                        if (c.id == record.categoryId) {
-                          catName = c.name;
-                          break;
-                        }
-                      }
-                      if (catName == null) return const SizedBox.shrink();
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.greenSoft,
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: Text(
-                          catName,
-                          style: AppTextStyles.caption.copyWith(
-                            fontSize: 10,
-                            color: context.ink,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
+                          .copyWith(color: context.inkMuted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
+            const SizedBox(width: 10),
             Text(amount,
                 style: AppTextStyles.body.copyWith(
-                    color: context.ink, fontWeight: FontWeight.w700)),
+                    color: isIncome ? AppColors.green : context.ink,
+                    fontWeight: FontWeight.w700)),
           ],
         ),
       ),
