@@ -50,7 +50,8 @@ class SummaryBoard extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.cardSurface,
           border: Border.all(color: context.hairline),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadii.inner),
+          boxShadow: context.softShadow,
         ),
         child: Row(
           children: [

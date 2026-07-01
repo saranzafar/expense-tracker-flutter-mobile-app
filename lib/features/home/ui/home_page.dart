@@ -184,15 +184,35 @@ class _BalanceCard extends StatelessWidget {
     final hairline = foreground.withValues(alpha: 0.12);
     const valueColor = Colors.white;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadii.hero),
+        boxShadow: context.softShadow,
+      ),
+      child: ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.hero),
       child: Container(
         decoration: BoxDecoration(
           color: cardBg,
-          borderRadius: const BorderRadius.all(Radius.circular(24)),
+          borderRadius: BorderRadius.circular(AppRadii.hero),
         ),
         child: Stack(
           children: [
+            // Faint top sheen so the hero reads like a premium surface.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.05),
+                      Colors.white.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             Positioned.fill(
               child: RepaintBoundary(
                 child: CustomPaint(
@@ -306,6 +326,7 @@ class _BalanceCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -517,7 +538,8 @@ class _EmptyRecent extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.cardSurface,
         border: Border.all(color: context.hairline),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        boxShadow: context.softShadow,
       ),
       child: Column(
         children: [
@@ -644,7 +666,8 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
       decoration: BoxDecoration(
         color: context.cardSurface,
         border: Border.all(color: context.hairline),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        boxShadow: context.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
