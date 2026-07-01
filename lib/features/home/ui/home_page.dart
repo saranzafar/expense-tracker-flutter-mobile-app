@@ -13,6 +13,7 @@ import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
 import '../../../shell/home_shell.dart';
 import '../../backup/ui/widgets/profile_chip.dart';
+import '../../mascot/mascot_companion.dart';
 import '../../records/ui/record_form_page.dart';
 import '../../records/widgets/record_tile.dart';
 import '../../shared/section_header.dart';
@@ -94,7 +95,12 @@ class HomePage extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             FadeIn(
-              delay: const Duration(milliseconds: 100),
+              delay: const Duration(milliseconds: 90),
+              child: const MascotCompanion(),
+            ),
+            const SizedBox(height: 16),
+            FadeIn(
+              delay: const Duration(milliseconds: 130),
               child: XSwitcher(
               child: stats.maybeWhen(
                 data: (s) =>
