@@ -10,29 +10,36 @@ enum MascotMood { happy, content, worried, sleepy }
 /// A one-shot reaction played on top of the idle animation.
 enum MascotReaction { none, pet, income, expense, celebrate }
 
+/// A temporary facial expression, cycled when the user taps the cat.
+enum MascotFace { none, wink, squint, surprised, heartEyes, starEyes, tongue, dizzy }
+
 /// Autonomous micro-behaviours the cat performs on its own so it feels alive.
-enum _Act { none, lookLeft, lookRight, earTwitch, yawn, wag, hop }
+enum _Act { none, lookLeft, lookRight, earTwitch, yawn, wag, hop, walk }
 
 /// "Xpy" — a fully code-drawn pixel cat. No image assets: the body is painted
 /// on a pixel grid so it stays crisp at any size and adapts to light/dark
 /// (body = ink, eyes/accents = green, hearts = red). It's always subtly alive
 /// (breathing, blinking, tail wag) and, on its own, looks around, twitches its
-/// ears, yawns and hops. Reactions play on demand.
+/// ears, yawns, wags, hops and takes a little walk. Tap to change its face.
 class PixelCat extends StatefulWidget {
   const PixelCat({
     super.key,
     this.mood = MascotMood.content,
     this.reaction = MascotReaction.none,
     this.reactionTick = 0,
+    this.face = MascotFace.none,
+    this.faceTick = 0,
     this.size = 96,
   });
 
   final MascotMood mood;
-
-  /// The reaction to play. Combined with [reactionTick] so the same reaction
-  /// can be re-triggered (tap twice → hearts twice).
   final MascotReaction reaction;
   final int reactionTick;
+
+  /// Temporary facial expression (from tapping). Combined with [faceTick] so
+  /// re-selecting the same face still re-pops it.
+  final MascotFace face;
+  final int faceTick;
   final double size;
 
   @override
@@ -71,18 +78,20 @@ class _PixelCatState extends State<PixelCat> with TickerProviderStateMixin {
   }
 
   void _scheduleAction() {
-    // Every few seconds the cat does something on its own.
-    final delayMs = 2600 + _rng.nextInt(3200);
+    final delayMs = 2400 + _rng.nextInt(3200);
     Future.delayed(Duration(milliseconds: delayMs), () {
       if (!mounted || _act.isAnimating) return;
-      setState(() => _action = _pickAction());
+      final a = _pickAction();
+      _act.duration = a == _Act.walk
+          ? const Duration(milliseconds: 2000)
+          : const Duration(milliseconds: 1100);
+      setState(() => _action = a);
       _act.forward(from: 0);
     });
   }
 
   _Act _pickAction() {
     if (widget.mood == MascotMood.sleepy) {
-      // A sleeping cat mostly twitches an ear or yawns.
       return _rng.nextBool() ? _Act.earTwitch : _Act.yawn;
     }
     final pool = <_Act>[
@@ -91,8 +100,9 @@ class _PixelCatState extends State<PixelCat> with TickerProviderStateMixin {
       _Act.earTwitch,
       _Act.yawn,
       _Act.wag,
+      _Act.walk,
       if (widget.mood == MascotMood.happy) _Act.hop,
-      if (widget.mood == MascotMood.happy) _Act.hop, // happier = more hops
+      if (widget.mood == MascotMood.happy) _Act.walk,
     ];
     return pool[_rng.nextInt(pool.length)];
   }
@@ -133,10 +143,10 @@ class _PixelCatState extends State<PixelCat> with TickerProviderStateMixin {
               reaction: widget.reaction,
               reactionProgress:
                   _react.value > 0 && _react.value < 1 ? _react.value : 0,
+              face: widget.face,
               action: _action,
-              actionBell: _act.isAnimating
-                  ? math.sin(_act.value * math.pi)
-                  : 0,
+              actionRaw: _act.isAnimating ? _act.value : 0,
+              actionBell: _act.isAnimating ? math.sin(_act.value * math.pi) : 0,
             ),
           );
         },
@@ -154,7 +164,9 @@ class _CatPainter extends CustomPainter {
     required this.mood,
     required this.reaction,
     required this.reactionProgress,
+    required this.face,
     required this.action,
+    required this.actionRaw,
     required this.actionBell,
   });
 
@@ -165,10 +177,11 @@ class _CatPainter extends CustomPainter {
   final MascotMood mood;
   final MascotReaction reaction;
   final double reactionProgress;
+  final MascotFace face;
   final _Act action;
-  final double actionBell; // 0..1 bell curve of the current action
+  final double actionRaw; // 0..1 raw progress of current action
+  final double actionBell; // 0..1 bell curve of current action
 
-  // 16 cols x 14 rows sitting-cat silhouette. '#' = body, ' ' = empty.
   static const List<String> _map = [
     '  #        #    ',
     ' ###      ###   ',
@@ -193,12 +206,18 @@ class _CatPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cell = size.width / _cols;
 
-    // Breathing bob + hop lift.
     final bob = mood == MascotMood.sleepy
         ? 0.0
         : math.sin(t * math.pi * 2) * cell * 0.32;
     final hop = action == _Act.hop ? -actionBell * cell * 2.6 : 0.0;
-    final dy = -bob + hop;
+    // Walk: glide left/right with a waddle bob.
+    final walking = action == _Act.walk;
+    final dxWalk =
+        walking ? math.sin(actionRaw * math.pi * 2) * cell * 2.2 : 0.0;
+    final waddle = walking
+        ? -(math.sin(actionRaw * math.pi * 8)).abs() * cell * 0.35
+        : 0.0;
+    final dy = -bob + hop + waddle;
 
     final paint = Paint()..isAntiAlias = false;
 
@@ -206,7 +225,7 @@ class _CatPainter extends CustomPainter {
       paint.color = c;
       canvas.drawRect(
         Rect.fromLTWH(
-          col * cell + ox,
+          col * cell + ox + dxWalk,
           row * cell + oy + dy,
           cell + 0.5,
           cell + 0.5,
@@ -215,92 +234,211 @@ class _CatPainter extends CustomPainter {
       );
     }
 
-    // ── Tail (wags; extra burst on the "wag" action) ────────────────────────
+    // ── Tail ────────────────────────────────────────────────────────────────
     final wagAmp = (mood == MascotMood.happy ? 1.4 : 0.8) +
         (action == _Act.wag ? actionBell * 2.2 : 0);
     final wag = math.sin(t * math.pi * 2 * 2) * wagAmp;
     for (int i = 0; i < 4; i++) {
-      final shift = i >= 2 ? wag : 0.0;
-      fill(15, 8 + i, body, ox: shift * cell * 0.5);
+      fill(15, 8 + i, body, ox: (i >= 2 ? wag : 0.0) * cell * 0.5);
     }
 
-    // ── Body (right ear lifts on "earTwitch") ───────────────────────────────
-    final earLift =
-        action == _Act.earTwitch ? -actionBell * cell * 0.6 : 0.0;
+    // ── Body (right ear lifts on earTwitch; feet shuffle while walking) ──────
+    final earLift = action == _Act.earTwitch ? -actionBell * cell * 0.6 : 0.0;
+    final step = walking ? (math.sin(actionRaw * math.pi * 8) > 0 ? 1 : -1) : 0;
     for (int r = 0; r < _rows; r++) {
       final line = _map[r];
       for (int c = 0; c < line.length && c < _cols; c++) {
         if (line[c] != '#') continue;
         final isRightEar = r < 3 && c >= 9;
-        fill(c, r, body, oy: isRightEar ? earLift : 0);
+        // Bottom paws alternate up a touch to fake stepping.
+        double oy = isRightEar ? earLift : 0;
+        if (walking && r >= 12) {
+          final leftHalf = c < 8;
+          if ((leftHalf && step > 0) || (!leftHalf && step < 0)) {
+            oy += -cell * 0.3;
+          }
+        }
+        fill(c, r, body, oy: oy);
       }
     }
 
-    // ── Eyes (look left/right shifts them; blink/yawn/sleepy close them) ─────
-    final blinking = t > 0.90 && t < 0.965;
-    final yawning = action == _Act.yawn;
-    final closed = mood == MascotMood.sleepy || blinking || yawning;
-    double eyeDx = 0;
-    if (action == _Act.lookLeft) eyeDx = -actionBell * cell * 1.2;
-    if (action == _Act.lookRight) eyeDx = actionBell * cell * 1.2;
-
-    const leftEye = 4, rightEye = 10, eyeTop = 6;
-    if (closed) {
-      for (final ex in [leftEye, rightEye]) {
-        fill(ex, eyeTop + 1, accent);
-        fill(ex + 1, eyeTop + 1, accent);
-      }
+    // ── Face ────────────────────────────────────────────────────────────────
+    if (face != MascotFace.none) {
+      _paintFace(fill, cell);
     } else {
-      for (final ex in [leftEye, rightEye]) {
-        fill(ex, eyeTop, accent, ox: eyeDx);
-        fill(ex + 1, eyeTop, accent, ox: eyeDx);
-        fill(ex, eyeTop + 1, accent, ox: eyeDx);
-        fill(ex + 1, eyeTop + 1, accent, ox: eyeDx);
-      }
-      if (mood == MascotMood.worried) {
-        fill(leftEye + 1, eyeTop - 1, body);
-        fill(rightEye, eyeTop - 1, body);
-      }
-    }
-
-    // ── Mouth ───────────────────────────────────────────────────────────────
-    if (yawning) {
-      // open "O" mouth
-      fill(7, 9, danger.withValues(alpha: 0.65));
-      fill(8, 9, danger.withValues(alpha: 0.65));
-      fill(7, 10, danger.withValues(alpha: 0.65));
-      fill(8, 10, danger.withValues(alpha: 0.65));
-    } else {
-      switch (mood) {
-        case MascotMood.happy:
-          fill(6, 9, accent);
-          fill(7, 10, accent);
-          fill(8, 10, accent);
-          fill(9, 9, accent);
-          fill(3, 8, accent.withValues(alpha: 0.35)); // blush
-          fill(12, 8, accent.withValues(alpha: 0.35));
-          break;
-        case MascotMood.content:
-          fill(7, 9, accent);
-          fill(8, 9, accent);
-          break;
-        case MascotMood.worried:
-          fill(6, 10, danger.withValues(alpha: 0.85));
-          fill(7, 9, danger.withValues(alpha: 0.85));
-          fill(8, 9, danger.withValues(alpha: 0.85));
-          fill(9, 10, danger.withValues(alpha: 0.85));
-          break;
-        case MascotMood.sleepy:
-          fill(7, 9, accent.withValues(alpha: 0.6));
-          break;
-      }
+      _paintMoodFace(fill);
     }
 
     _paintParticles(canvas, size, cell);
   }
 
+  // Tapped expressions.
+  void _paintFace(void Function(int, int, Color, {double ox, double oy}) fill,
+      double cell) {
+    const l = 4, r = 10, top = 6;
+
+    void eyeBlock(int ex) {
+      fill(ex, top, accent);
+      fill(ex + 1, top, accent);
+      fill(ex, top + 1, accent);
+      fill(ex + 1, top + 1, accent);
+    }
+
+    void smile() {
+      fill(6, 9, accent);
+      fill(7, 10, accent);
+      fill(8, 10, accent);
+      fill(9, 9, accent);
+    }
+
+    switch (face) {
+      case MascotFace.wink:
+        eyeBlock(l);
+        fill(r, top + 1, accent); // right eye closed line
+        fill(r + 1, top + 1, accent);
+        smile();
+        break;
+      case MascotFace.squint: // ^_^
+        fill(l, top, accent);
+        fill(l + 1, top, accent);
+        fill(r, top, accent);
+        fill(r + 1, top, accent);
+        smile();
+        break;
+      case MascotFace.surprised: // O_O + o mouth
+        for (final ex in [l, r]) {
+          for (int dxp = -1; dxp <= 1; dxp++) {
+            for (int dyp = 0; dyp <= 1; dyp++) {
+              fill(ex + dxp, top + dyp, accent);
+            }
+          }
+        }
+        fill(7, 10, danger.withValues(alpha: 0.6));
+        fill(8, 10, danger.withValues(alpha: 0.6));
+        break;
+      case MascotFace.heartEyes:
+        _miniHeart(fill, l - 1);
+        _miniHeart(fill, r - 1);
+        smile();
+        break;
+      case MascotFace.starEyes:
+        _miniStar(fill, l - 1);
+        _miniStar(fill, r - 1);
+        smile();
+        break;
+      case MascotFace.tongue:
+        eyeBlock(l);
+        eyeBlock(r);
+        smile();
+        fill(7, 11, danger); // tongue
+        fill(8, 11, danger);
+        break;
+      case MascotFace.dizzy: // x_x
+        _miniX(fill, l - 1);
+        _miniX(fill, r - 1);
+        fill(7, 10, accent.withValues(alpha: 0.6));
+        break;
+      case MascotFace.none:
+        break;
+    }
+  }
+
+  void _miniHeart(void Function(int, int, Color, {double ox, double oy}) fill,
+      int c) {
+    fill(c, 5, danger);
+    fill(c + 2, 5, danger);
+    fill(c, 6, danger);
+    fill(c + 1, 6, danger);
+    fill(c + 2, 6, danger);
+    fill(c + 1, 7, danger);
+  }
+
+  void _miniStar(void Function(int, int, Color, {double ox, double oy}) fill,
+      int c) {
+    fill(c + 1, 5, accent);
+    fill(c, 6, accent);
+    fill(c + 1, 6, accent);
+    fill(c + 2, 6, accent);
+    fill(c + 1, 7, accent);
+  }
+
+  void _miniX(void Function(int, int, Color, {double ox, double oy}) fill,
+      int c) {
+    fill(c, 5, accent);
+    fill(c + 2, 5, accent);
+    fill(c + 1, 6, accent);
+    fill(c, 7, accent);
+    fill(c + 2, 7, accent);
+  }
+
+  // Mood-driven face (default), incl. autonomous look/yawn.
+  void _paintMoodFace(
+      void Function(int, int, Color, {double ox, double oy}) fill) {
+    final blinking = t > 0.90 && t < 0.965;
+    final yawning = action == _Act.yawn;
+    final closed = mood == MascotMood.sleepy || blinking || yawning;
+    double eyeDx = 0;
+    // action look shifts eyes; approximate cell offset via ox in px handled by
+    // caller's cell — here we just nudge columns for clarity.
+    const l = 4, r = 10, top = 6;
+
+    if (action == _Act.lookLeft) eyeDx = -1;
+    if (action == _Act.lookRight) eyeDx = 1;
+
+    if (closed) {
+      for (final ex in [l, r]) {
+        fill(ex, top + 1, accent);
+        fill(ex + 1, top + 1, accent);
+      }
+    } else {
+      for (final ex in [l, r]) {
+        final e = ex + eyeDx.toInt();
+        fill(e, top, accent);
+        fill(e + 1, top, accent);
+        fill(e, top + 1, accent);
+        fill(e + 1, top + 1, accent);
+      }
+      if (mood == MascotMood.worried) {
+        fill(l + 1, top - 1, body);
+        fill(r, top - 1, body);
+      }
+    }
+
+    if (yawning) {
+      fill(7, 9, danger.withValues(alpha: 0.65));
+      fill(8, 9, danger.withValues(alpha: 0.65));
+      fill(7, 10, danger.withValues(alpha: 0.65));
+      fill(8, 10, danger.withValues(alpha: 0.65));
+      return;
+    }
+
+    switch (mood) {
+      case MascotMood.happy:
+        fill(6, 9, accent);
+        fill(7, 10, accent);
+        fill(8, 10, accent);
+        fill(9, 9, accent);
+        fill(3, 8, accent.withValues(alpha: 0.35));
+        fill(12, 8, accent.withValues(alpha: 0.35));
+        break;
+      case MascotMood.content:
+        fill(7, 9, accent);
+        fill(8, 9, accent);
+        break;
+      case MascotMood.worried:
+        fill(6, 10, danger.withValues(alpha: 0.85));
+        fill(7, 9, danger.withValues(alpha: 0.85));
+        fill(8, 9, danger.withValues(alpha: 0.85));
+        fill(9, 10, danger.withValues(alpha: 0.85));
+        break;
+      case MascotMood.sleepy:
+        fill(7, 9, accent.withValues(alpha: 0.6));
+        break;
+    }
+  }
+
   void _paintParticles(Canvas canvas, Size size, double cell) {
-    if (mood == MascotMood.sleepy) {
+    if (mood == MascotMood.sleepy && face == MascotFace.none) {
       _drawZ(canvas, size, cell);
     }
     if (reactionProgress <= 0) return;
@@ -310,7 +448,6 @@ class _CatPainter extends CustomPainter {
 
     switch (reaction) {
       case MascotReaction.pet:
-        // Red hearts 💕
         _drawHeart(canvas, cell, size.width * 0.28,
             size.height * 0.15 - rise, danger.withValues(alpha: fade));
         _drawHeart(canvas, cell, size.width * 0.60,
@@ -329,17 +466,16 @@ class _CatPainter extends CustomPainter {
         break;
       case MascotReaction.expense:
         final drop = p * cell * 3;
-        paintRect(canvas, size.width * 0.5, size.height * 0.35 + drop, cell,
-            danger.withValues(alpha: fade));
+        canvas.drawRect(
+          Rect.fromLTWH(size.width * 0.5, size.height * 0.35 + drop, cell, cell),
+          Paint()
+            ..isAntiAlias = false
+            ..color = danger.withValues(alpha: fade),
+        );
         break;
       case MascotReaction.none:
         break;
     }
-  }
-
-  void paintRect(Canvas canvas, double x, double y, double s, Color c) {
-    canvas.drawRect(Rect.fromLTWH(x, y, s, s),
-        Paint()..color = c ..isAntiAlias = false);
   }
 
   void _drawHeart(Canvas canvas, double cell, double x, double y, Color c) {

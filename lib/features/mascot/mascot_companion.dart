@@ -33,6 +33,21 @@ class _MascotCompanionState extends ConsumerState<MascotCompanion> {
   String _idleLine = 'Hey there 🐾';
   Timer? _chatterTimer;
 
+  // Facial expressions cycled on tap.
+  MascotFace _face = MascotFace.none;
+  int _faceTick = 0;
+  int _faceIndex = 0;
+  Timer? _faceTimer;
+  static const _faces = [
+    MascotFace.wink,
+    MascotFace.squint,
+    MascotFace.surprised,
+    MascotFace.heartEyes,
+    MascotFace.starEyes,
+    MascotFace.tongue,
+    MascotFace.dizzy,
+  ];
+
   // ── Speech pools ──────────────────────────────────────────────────────────
   static const _happy = [
     "You're saving — nice!",
@@ -116,6 +131,7 @@ class _MascotCompanionState extends ConsumerState<MascotCompanion> {
   void dispose() {
     _resetTimer?.cancel();
     _chatterTimer?.cancel();
+    _faceTimer?.cancel();
     super.dispose();
   }
 
@@ -146,7 +162,19 @@ class _MascotCompanionState extends ConsumerState<MascotCompanion> {
     });
   }
 
-  void _petCat() => _fireReaction(MascotReaction.pet, _pick(_pet));
+  void _petCat() {
+    // Pet (red hearts + a line) AND flip to the next fun expression.
+    _fireReaction(MascotReaction.pet, _pick(_pet));
+    _faceIndex = (_faceIndex + 1) % _faces.length;
+    setState(() {
+      _face = _faces[_faceIndex];
+      _faceTick++;
+    });
+    _faceTimer?.cancel();
+    _faceTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) setState(() => _face = MascotFace.none);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -188,6 +216,8 @@ class _MascotCompanionState extends ConsumerState<MascotCompanion> {
               mood: _mood,
               reaction: _reaction,
               reactionTick: _tick,
+              face: _face,
+              faceTick: _faceTick,
               size: 68,
             ),
             const SizedBox(width: 12),
