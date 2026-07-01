@@ -512,7 +512,12 @@ class _OutstandingCard extends ConsumerWidget {
                 ],
                 if (stats.outstandingLoanCount > 0 &&
                     stats.outstandingBorrowedCount > 0)
-                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Container(
+                        height: 1,
+                        color: AppColors.green.withValues(alpha: 0.18)),
+                  ),
                 if (stats.outstandingBorrowedCount > 0) ...[
                   Text(
                       'Borrowed · ${stats.outstandingBorrowedCount}',
