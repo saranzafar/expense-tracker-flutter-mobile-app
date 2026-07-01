@@ -73,7 +73,9 @@ class HomePage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
-            XSwitcher(
+            FadeIn(
+              delay: const Duration(milliseconds: 40),
+              child: XSwitcher(
               child: stats.when(
                 loading: () => const _BalanceCardSkeleton(
                     key: ValueKey('balance-loading')),
@@ -88,9 +90,12 @@ class HomePage extends ConsumerWidget {
                         .read(balanceHiddenProvider.notifier)
                         .set(!balanceHidden)),
               ),
+              ),
             ),
             const SizedBox(height: 16),
-            XSwitcher(
+            FadeIn(
+              delay: const Duration(milliseconds: 100),
+              child: XSwitcher(
               child: stats.maybeWhen(
                 data: (s) =>
                     s.outstandingLoanCount + s.outstandingBorrowedCount == 0
@@ -101,9 +106,13 @@ class HomePage extends ConsumerWidget {
                             currency: currency),
                 orElse: () => const SizedBox.shrink(key: ValueKey('out-none')),
               ),
+              ),
             ),
             const SizedBox(height: 16),
-            const _ChartCard(),
+            FadeIn(
+              delay: const Duration(milliseconds: 160),
+              child: const _ChartCard(),
+            ),
             const SizedBox(height: 24),
             SectionHeader(
               'Recent activity',
@@ -462,27 +471,27 @@ class _OutstandingCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Material(
-      color: AppColors.greenSoft,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => ref.read(shellNavProvider.notifier).goTo(2),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-        children: [
-          Container(
-            height: 40,
-            width: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: context.surface,
-              borderRadius: BorderRadius.circular(12),
+    return PressScale(
+      onTap: () => ref.read(shellNavProvider.notifier).goTo(2),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.greenSoft,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              height: 40,
+              width: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: context.surface,
+                borderRadius: BorderRadius.circular(AppRadii.chip),
+              ),
+              child: Icon(Icons.handshake_outlined,
+                  color: context.ink, size: 20),
             ),
-            child: Icon(Icons.handshake_outlined,
-                color: context.ink, size: 20),
-          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -523,7 +532,6 @@ class _OutstandingCard extends ConsumerWidget {
           Icon(Icons.chevron_right, color: context.inkSubtle),
         ],
       ),
-        ),
       ),
     );
   }
