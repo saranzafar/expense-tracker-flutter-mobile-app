@@ -15,6 +15,7 @@ import '../../../shell/home_shell.dart';
 import '../../backup/ui/widgets/profile_chip.dart';
 import '../../records/ui/record_form_page.dart';
 import '../../records/widgets/record_tile.dart';
+import '../../shared/section_header.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -104,21 +105,24 @@ class HomePage extends ConsumerWidget {
             const SizedBox(height: 16),
             const _ChartCard(),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Recent activity',
-                    style: AppTextStyles.title.copyWith(color: context.ink)),
-                stats.maybeWhen(
-                  data: (_) => TextButton(
-                      onPressed: () =>
-                          ref.read(shellNavProvider.notifier).goTo(1),
-                      child: Text('See all',
+            SectionHeader(
+              'Recent activity',
+              trailing: stats.maybeWhen(
+                data: (_) => GestureDetector(
+                  onTap: () => ref.read(shellNavProvider.notifier).goTo(1),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('See all',
                           style: AppTextStyles.caption
-                              .copyWith(color: context.ink))),
-                  orElse: () => const SizedBox.shrink(),
+                              .copyWith(color: context.inkMuted)),
+                      Icon(Icons.chevron_right,
+                          size: 16, color: context.inkSubtle),
+                    ],
+                  ),
                 ),
-              ],
+                orElse: () => const SizedBox.shrink(),
+              ),
             ),
             const SizedBox(height: 8),
             XSwitcher(
@@ -211,9 +215,9 @@ class _BalanceCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text('Available balance',
+                      Text('AVAILABLE BALANCE',
                           style:
-                              AppTextStyles.caption.copyWith(color: muted)),
+                              AppTextStyles.overline.copyWith(color: muted)),
                       const Spacer(),
                       GestureDetector(
                         onTap: onToggle,
@@ -251,14 +255,14 @@ class _BalanceCard extends StatelessWidget {
                             '••••••',
                             key: const ValueKey('bal-hidden'),
                             style: AppTextStyles.display.copyWith(
-                                color: AppColors.green, fontSize: 38),
+                                color: AppColors.green, fontSize: 44),
                           )
                         : AnimatedMoney(
                             key: const ValueKey('bal-shown'),
                             minor: stats.availableBalance,
                             currency: currency,
                             style: AppTextStyles.display
-                                .copyWith(color: AppColors.green, fontSize: 38),
+                                .copyWith(color: AppColors.green, fontSize: 44),
                           ),
                   ),
                   const SizedBox(height: 20),
@@ -646,8 +650,8 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header: title row ────────────────────────────────────────
-          Text('Overview',
-              style: AppTextStyles.title.copyWith(color: context.ink)),
+          Text('OVERVIEW',
+              style: AppTextStyles.overline.copyWith(color: context.inkSubtle)),
           const SizedBox(height: 12),
           // ── Period chips (scrollable to handle long custom label) ────
           SingleChildScrollView(

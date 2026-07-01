@@ -1,6 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Corner-radius scale — hero cards roundest, chips tightest. One scale so
+/// roundness reads as intentional across the app.
+class AppRadii {
+  static const double hero = 28;
+  static const double card = 20;
+  static const double inner = 14;
+  static const double chip = 12;
+  static const double pill = 100;
+}
+
+/// 8pt spacing scale. Use these instead of ad-hoc gaps so vertical rhythm is
+/// consistent everywhere.
+class AppSpacing {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 20;
+  static const double xxl = 24;
+  static const double xxxl = 32;
+}
+
+/// Tabular figures — makes digits equal-width so animated money doesn't jitter
+/// and columns of numbers align. Applied to every text style below.
+const List<FontFeature> _kTabular = [FontFeature.tabularFigures()];
+
 class AppColors {
   // Light
   static const surface = Color(0xFFFFFFFF);
@@ -41,6 +67,24 @@ extension AppColorsX on BuildContext {
   // Use for content cards so they sit visually above the page background.
   Color get cardSurface =>
       _isDark ? AppColors.cardSurfaceDark : AppColors.surface;
+
+  /// Very soft elevation — depth through restraint, not heavy shadows.
+  /// Lighter in light mode; a touch deeper in dark mode to read at all.
+  List<BoxShadow> get softShadow => _isDark
+      ? const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ]
+      : const [
+          BoxShadow(
+            color: Color(0x0D000000), // black @ ~5%
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ];
 }
 
 ThemeData buildAppTheme() => _buildTheme(Brightness.light);
@@ -176,28 +220,44 @@ ThemeData _buildTheme(Brightness b) {
 }
 
 /// Static styles — left without `color` so DefaultTextStyle / Theme provides it.
+/// All carry tabular figures so numbers align and animate without jitter.
 class AppTextStyles {
   static TextStyle display = GoogleFonts.plusJakartaSans(
     fontSize: 40,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -1,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -1.2,
+    height: 1.0,
+    fontFeatures: _kTabular,
   );
   static TextStyle headline = GoogleFonts.plusJakartaSans(
     fontSize: 22,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.3,
+    fontFeatures: _kTabular,
   );
   static TextStyle title = GoogleFonts.plusJakartaSans(
     fontSize: 16,
     fontWeight: FontWeight.w600,
+    fontFeatures: _kTabular,
   );
   static TextStyle body = GoogleFonts.plusJakartaSans(
     fontSize: 15,
     fontWeight: FontWeight.w500,
+    fontFeatures: _kTabular,
   );
   static TextStyle caption = GoogleFonts.plusJakartaSans(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.3,
+    fontFeatures: _kTabular,
+  );
+
+  /// Overline — small uppercase section label with wide tracking. Editorial
+  /// hierarchy device used for "RECENT ACTIVITY", "OVERVIEW", day headers, etc.
+  static TextStyle overline = GoogleFonts.plusJakartaSans(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.2,
+    fontFeatures: _kTabular,
   );
 }
