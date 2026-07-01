@@ -9,6 +9,7 @@ import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
+import '../../shared/totals_strip.dart';
 import 'project_detail_page.dart';
 import 'project_form_page.dart';
 
@@ -68,6 +69,8 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage>
     super.build(context);
     final projectsAsync = ref.watch(projectsProvider);
     final currency = ref.watch(currencyProvider);
+    final received =
+        ref.watch(receivedByProjectProvider).valueOrNull ?? const {};
 
     return Scaffold(
       appBar: AppBar(
@@ -106,7 +109,14 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage>
       ),
       body: SafeArea(
         bottom: false,
-        child: XSwitcher(
+        child: RefreshIndicator(
+          color: AppColors.green,
+          onRefresh: () async {
+            ref.invalidate(projectsProvider);
+            ref.invalidate(receivedByProjectProvider);
+            await ref.read(projectsProvider.future);
+          },
+          child: XSwitcher(
           child: projectsAsync.when(
             loading: () => const Center(
                 key: ValueKey('proj-loading'),
@@ -116,70 +126,119 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage>
             data: (all) {
               final items = _applyFilters(all);
               if (all.isEmpty) {
-                return Center(
+                return ListView(
                   key: const ValueKey('proj-empty'),
-                  child: Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.folder_outlined,
-                            size: 56, color: context.inkSubtle),
-                        const SizedBox(height: 16),
-                        Text('No projects yet',
-                            style: AppTextStyles.title
-                                .copyWith(color: context.ink)),
-                        const SizedBox(height: 6),
-                        Text('Tap + to create your first project',
-                            style: AppTextStyles.caption
-                                .copyWith(color: context.inkMuted),
-                            textAlign: TextAlign.center),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              if (items.isEmpty) {
-                return Center(
-                  key: const ValueKey('proj-filtered-empty'),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.folder_off_outlined,
-                          size: 48, color: context.inkSubtle),
-                      const SizedBox(height: 12),
-                      Text('No projects match',
-                          style: AppTextStyles.title
-                              .copyWith(color: context.ink)),
-                      const SizedBox(height: 4),
-                      Text('Try adjusting your filters',
-                          style: AppTextStyles.caption
-                              .copyWith(color: context.inkMuted)),
-                    ],
-                  ),
-                );
-              }
-              return ListView.builder(
-                key: const ValueKey('proj-list'),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-                itemCount: items.length,
-                itemBuilder: (_, i) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: FadeIn(
-                    key: ValueKey(items[i].id),
-                    child: _ProjectCard(
-                      project: items[i],
-                      currency: currency,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ProjectDetailPage(project: items[i]),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.65,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.folder_outlined,
+                                  size: 56, color: context.inkSubtle),
+                              const SizedBox(height: 16),
+                              Text('No projects yet',
+                                  style: AppTextStyles.title
+                                      .copyWith(color: context.ink)),
+                              const SizedBox(height: 6),
+                              Text('Tap + to create your first project',
+                                  style: AppTextStyles.caption
+                                      .copyWith(color: context.inkMuted),
+                                  textAlign: TextAlign.center),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  ],
+                );
+              }
+              if (items.isEmpty) {
+                return ListView(
+                  key: const ValueKey('proj-filtered-empty'),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.65,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.folder_off_outlined,
+                                size: 48, color: context.inkSubtle),
+                            const SizedBox(height: 12),
+                            Text('No projects match',
+                                style: AppTextStyles.title
+                                    .copyWith(color: context.ink)),
+                            const SizedBox(height: 4),
+                            Text('Try adjusting your filters',
+                                style: AppTextStyles.caption
+                                    .copyWith(color: context.inkMuted)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+              final budget =
+                  items.fold<int>(0, (s, p) => s + p.totalAmountMinor);
+              final receivedTotal = items.fold<int>(
+                  0, (s, p) => s + (received[p.id] ?? 0));
+              final remaining = budget - receivedTotal;
+              return ListView.builder(
+                key: const ValueKey('proj-list'),
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 120),
+                itemCount: items.length + 1,
+                itemBuilder: (_, i) {
+                  if (i == 0) {
+                    return SummaryBoard(
+                      left: BoardStat(
+                        icon: Icons.account_balance_wallet_outlined,
+                        color: context.ink,
+                        label: 'Budget',
+                        value: formatMoney(budget, currency),
+                      ),
+                      middle: BoardStat(
+                        icon: Icons.arrow_downward_rounded,
+                        color: AppColors.green,
+                        label: 'Received',
+                        value: formatMoney(receivedTotal, currency),
+                      ),
+                      rightLabel: 'Remaining',
+                      rightValue: formatMoney(remaining, currency),
+                      rightColor: remaining <= 0
+                          ? AppColors.green
+                          : context.ink,
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                    );
+                  }
+                  final project = items[i - 1];
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+                    child: FadeIn(
+                      key: ValueKey(project.id),
+                      child: _ProjectCard(
+                        project: project,
+                        currency: currency,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProjectDetailPage(project: project),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
             },
+          ),
           ),
         ),
       ),

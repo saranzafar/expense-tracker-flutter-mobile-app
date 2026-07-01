@@ -5,7 +5,6 @@ import 'core/motion.dart';
 import 'core/theme.dart';
 import 'data/onboarding_repo.dart';
 import 'data/settings_repo.dart';
-import 'features/backup/data/backup_repo.dart';
 import 'features/onboarding/ui/onboarding_page.dart';
 import 'shell/home_shell.dart';
 
@@ -35,23 +34,15 @@ class _RootGate extends ConsumerStatefulWidget {
 }
 
 class _RootGateState extends ConsumerState<_RootGate> {
-  bool _autoBackupScheduled = false;
-
   @override
   Widget build(BuildContext context) {
     final seen = ref.watch(onboardingSeenProvider);
     return seen.when(
       loading: () => const _Splash(),
       error: (_, _) => const HomeShell(),
-      data: (seen) {
-        if (seen && !_autoBackupScheduled) {
-          _autoBackupScheduled = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(backupRepoProvider).autoBackupIfDue();
-          });
-        }
-        return seen ? const HomeShell() : const OnboardingPage();
-      },
+      // Automatic backup is triggered from HomeShell (on mount, on silent
+      // sign-in, and debounced after edits) — see home_shell.dart.
+      data: (seen) => seen ? const HomeShell() : const OnboardingPage(),
     );
   }
 }

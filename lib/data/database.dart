@@ -178,6 +178,10 @@ class AppDatabase extends _$AppDatabase {
 
   Future<bool> isEmpty() async => (await countRecords()) == 0;
 
+  /// Emits once whenever any table changes (insert/update/delete). Powers the
+  /// debounced auto-backup so edits are saved to Drive without a button press.
+  Stream<void> watchAnyChange() => tableUpdates();
+
   Stream<List<RecordRow>> watchRecords({
     RecordType? type,
     Set<RecordType>? typesIn,
@@ -373,6 +377,23 @@ class AppDatabase extends _$AppDatabase {
             ..where((p) => p.projectId.equals(projectId))
             ..orderBy([(p) => OrderingTerm.asc(p.paidAt)]))
           .watch();
+
+  /// Sum of payments received per project (projectId → total minor units).
+  /// Powers the Projects summary board without opening one stream per card.
+  Stream<Map<String, int>> watchReceivedByProject() {
+    final sum = projectPayments.amountMinor.sum();
+    final query = selectOnly(projectPayments)
+      ..addColumns([projectPayments.projectId, sum])
+      ..groupBy([projectPayments.projectId]);
+    return query.watch().map((rows) {
+      final map = <String, int>{};
+      for (final r in rows) {
+        final id = r.read(projectPayments.projectId);
+        if (id != null) map[id] = r.read(sum) ?? 0;
+      }
+      return map;
+    });
+  }
 
   /// Records a project payment AND its matching income record (the money the
   /// project earned), atomically. The income record flows into the balance,

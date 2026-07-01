@@ -22,6 +22,10 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
+/// Fires whenever any table changes — used to debounce automatic backups.
+final dataChangeProvider = StreamProvider<void>(
+    (ref) => ref.watch(databaseProvider).watchAnyChange());
+
 final dashboardStatsProvider = StreamProvider<DashboardStats>((ref) {
   return ref.watch(databaseProvider).watchStats();
 });
@@ -85,23 +89,51 @@ final filteredRecordsProvider =
       );
 });
 
-final outstandingLoansProvider =
-    StreamProvider.family<List<RecordRow>, DateRangeFilter>((ref, range) {
-  final r = range.resolve(DateTime.now());
-  return ref.watch(databaseProvider).watchRecords(
-        typesIn: {RecordType.loanGiven, RecordType.loanTaken},
-        loanReturned: false,
-        from: r.start,
-        to: r.end,
-      );
-});
+/// Loan direction filter for the Loans screen.
+enum LoanTypeFilter { all, lent, borrowed }
 
-final returnedLoansProvider =
-    StreamProvider.family<List<RecordRow>, DateRangeFilter>((ref, range) {
-  final r = range.resolve(DateTime.now());
+extension LoanTypeFilterX on LoanTypeFilter {
+  Set<RecordType> get types => switch (this) {
+        LoanTypeFilter.all =>
+          const {RecordType.loanGiven, RecordType.loanTaken},
+        LoanTypeFilter.lent => const {RecordType.loanGiven},
+        LoanTypeFilter.borrowed => const {RecordType.loanTaken},
+      };
+}
+
+/// Query for the Loans list — a tab (returned vs outstanding) plus the shared
+/// type / category / date-range filters.
+class LoansQuery {
+  final bool returned;
+  final LoanTypeFilter type;
+  final String? categoryId;
+  final DateRangeFilter range;
+  const LoansQuery({
+    required this.returned,
+    required this.type,
+    required this.range,
+    this.categoryId,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is LoansQuery &&
+      other.returned == returned &&
+      other.type == type &&
+      other.categoryId == categoryId &&
+      other.range == range;
+
+  @override
+  int get hashCode => Object.hash(returned, type, categoryId, range);
+}
+
+final loansProvider =
+    StreamProvider.family<List<RecordRow>, LoansQuery>((ref, q) {
+  final r = q.range.resolve(DateTime.now());
   return ref.watch(databaseProvider).watchRecords(
-        typesIn: {RecordType.loanGiven, RecordType.loanTaken},
-        loanReturned: true,
+        typesIn: q.type.types,
+        loanReturned: q.returned,
+        categoryId: q.categoryId,
         from: r.start,
         to: r.end,
       );
@@ -123,6 +155,10 @@ final projectPaymentsProvider =
   (ref, projectId) =>
       ref.watch(databaseProvider).watchProjectPayments(projectId),
 );
+
+/// projectId → total payments received (minor units). Feeds the Projects board.
+final receivedByProjectProvider = StreamProvider<Map<String, int>>(
+    (ref) => ref.watch(databaseProvider).watchReceivedByProject());
 
 final chartDataProvider =
     StreamProvider.family<List<ChartPoint>, ChartPeriod>((ref, period) {

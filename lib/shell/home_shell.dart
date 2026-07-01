@@ -1,13 +1,16 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/theme.dart';
 import '../data/providers.dart';
 import '../features/backup/data/backup_repo.dart';
+import '../features/backup/data/google_auth.dart';
 import '../features/home/ui/home_page.dart';
 import '../features/loans/ui/loans_page.dart';
 import '../features/projects/ui/projects_page.dart';
@@ -60,6 +63,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
   bool _exitArmed = false;
   bool _wasOnline = false;
   bool _isSyncingFromProvider = false;
+  Timer? _editBackupTimer;
   final PageController _pageController = PageController(initialPage: 0);
 
   @override
@@ -71,13 +75,33 @@ class _HomeShellState extends ConsumerState<HomeShell>
         _wasOnline = results.any((r) => r != ConnectivityResult.none);
       }
     });
+    // Covers the "already silently signed in by the time the shell mounts" case.
+    // The googleAuthProvider listener in build() covers the slower case where
+    // silent sign-in finishes a moment later (which was the launch-race bug).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(backupRepoProvider).autoBackupIfDue();
+    });
   }
 
   @override
   void dispose() {
+    _editBackupTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
+  }
+
+  /// Debounced automatic backup after data edits — waits for a quiet period so
+  /// a burst of edits coalesces into one upload. Uses the same backup the
+  /// manual button runs; only fires if enabled + signed in + online + due.
+  void _scheduleEditBackup() {
+    _editBackupTimer?.cancel();
+    _editBackupTimer = Timer(const Duration(minutes: 2), () {
+      if (!mounted) return;
+      ref
+          .read(backupRepoProvider)
+          .autoBackupIfDue(minInterval: const Duration(minutes: 2));
+    });
   }
 
   @override
@@ -135,6 +159,20 @@ class _HomeShellState extends ConsumerState<HomeShell>
         _wasOnline = isOnline;
       },
     );
+
+    // Fix for the launch race: back up the moment silent sign-in lands (the
+    // previous one-shot launch call ran while the account was still null).
+    ref.listen<GoogleSignInAccount?>(googleAuthProvider, (prev, next) {
+      if (prev == null && next != null) {
+        ref.read(backupRepoProvider).autoBackupIfDue();
+      }
+    });
+
+    // Automatic backup after any edit (debounced) — this is what makes it feel
+    // "auto": add/edit/delete a record, loan, project or payment and it saves.
+    ref.listen<AsyncValue<void>>(dataChangeProvider, (_, next) {
+      if (next is AsyncData) _scheduleEditBackup();
+    });
 
     // On tap: page slides AND pill animates — but independently so the pill
     // travels directly from source to target without lighting up intermediate tabs.

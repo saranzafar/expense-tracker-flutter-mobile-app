@@ -31,9 +31,19 @@ class HomePage extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-          children: [
+        child: RefreshIndicator(
+          color: AppColors.green,
+          onRefresh: () async {
+            ref.invalidate(dashboardStatsProvider);
+            ref.invalidate(recentRecordsProvider);
+            ref.invalidate(chartDataProvider);
+            ref.invalidate(customChartDataProvider);
+            await ref.read(dashboardStatsProvider.future);
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+            children: [
             Row(
               children: [
                 Expanded(
@@ -138,6 +148,7 @@ class HomePage extends ConsumerWidget {
               ),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -552,7 +563,24 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
   ChartPeriod? _period = ChartPeriod.month; // null = custom
   DateTimeRange? _customRange;
 
+  // Legend visibility — tap a chip to hide/show its line. Never both off.
+  bool _showIncome = true;
+  bool _showExpense = true;
+
   bool get _isCustom => _period == null;
+
+  void _toggleSeries({required bool income}) {
+    setState(() {
+      if (income) {
+        // Refuse to hide the last visible line.
+        if (_showIncome && !_showExpense) return;
+        _showIncome = !_showIncome;
+      } else {
+        if (_showExpense && !_showIncome) return;
+        _showExpense = !_showExpense;
+      }
+    });
+  }
 
   bool get _useMonthly {
     if (_period == ChartPeriod.year) return true;
@@ -746,6 +774,8 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
                   points: pts,
                   useMonthly: _useMonthly,
                   currency: currency,
+                  showIncome: _showIncome,
+                  showExpense: _showExpense,
                 );
               },
             ),
@@ -755,9 +785,19 @@ class _ChartCardState extends ConsumerState<_ChartCard> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _Legend(color: AppColors.green, label: 'Income'),
+              _Legend(
+                color: AppColors.green,
+                label: 'Income',
+                enabled: _showIncome,
+                onTap: () => _toggleSeries(income: true),
+              ),
               const SizedBox(width: 16),
-              _Legend(color: AppColors.danger, label: 'Expense'),
+              _Legend(
+                color: AppColors.danger,
+                label: 'Expense',
+                enabled: _showExpense,
+                onTap: () => _toggleSeries(income: false),
+              ),
             ],
           ),
         ],
@@ -844,25 +884,44 @@ class _PeriodChip extends StatelessWidget {
 }
 
 class _Legend extends StatelessWidget {
-  const _Legend({required this.color, required this.label});
+  const _Legend({
+    required this.color,
+    required this.label,
+    this.enabled = true,
+    this.onTap,
+  });
   final Color color;
   final String label;
+  final bool enabled;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: enabled ? 1.0 : 0.4,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: enabled ? color : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(color: color, width: 1.5),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(label,
+                style: AppTextStyles.caption
+                    .copyWith(color: context.inkMuted)),
+          ],
         ),
-        const SizedBox(width: 6),
-        Text(label,
-            style:
-                AppTextStyles.caption.copyWith(color: context.inkMuted)),
-      ],
+      ),
     );
   }
 }
@@ -872,10 +931,14 @@ class _LineChart extends StatelessWidget {
     required this.points,
     required this.useMonthly,
     required this.currency,
+    this.showIncome = true,
+    this.showExpense = true,
   });
   final List<ChartPoint> points;
   final bool useMonthly;
   final CurrencyOption currency;
+  final bool showIncome;
+  final bool showExpense;
 
   @override
   Widget build(BuildContext context) {
@@ -889,12 +952,20 @@ class _LineChart extends StatelessWidget {
       expenseSpots.add(FlSpot(i.toDouble(), points[i].expense / 100));
     }
 
+    // Rescale the Y-axis to only the visible series, so the remaining line
+    // expands to fill the card when one is toggled off.
     final maxVal = points.fold<double>(0.0, (m, p) {
-      final v = p.income > p.expense ? p.income : p.expense;
+      double v = 0;
+      if (showIncome && p.income > v) v = p.income;
+      if (showExpense && p.expense > v) v = p.expense;
       return v > m ? v : m;
     }) /
         100;
     final maxY = maxVal == 0 ? 100.0 : (maxVal * 1.25).ceilToDouble();
+
+    // Series list, in draw order, tracking which is income for the tooltip.
+    final bars = <LineChartBarData>[];
+    final barIsIncome = <bool>[];
 
     String bottomLabel(int idx) {
       if (idx < 0 || idx >= points.length) return '';
@@ -914,51 +985,57 @@ class _LineChart extends StatelessWidget {
       }
     }
 
+    if (showIncome) {
+      bars.add(LineChartBarData(
+        spots: incomeSpots,
+        isCurved: true,
+        preventCurveOverShooting: true,
+        color: AppColors.green,
+        barWidth: 2,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(
+          show: true,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.green.withValues(alpha: 0.15),
+              AppColors.green.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+      ));
+      barIsIncome.add(true);
+    }
+    if (showExpense) {
+      bars.add(LineChartBarData(
+        spots: expenseSpots,
+        isCurved: true,
+        preventCurveOverShooting: true,
+        color: AppColors.danger,
+        barWidth: 2,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(
+          show: true,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.danger.withValues(alpha: 0.06),
+              AppColors.danger.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+      ));
+      barIsIncome.add(false);
+    }
+
     return LineChart(
       LineChartData(
         minY: 0,
         maxY: maxY,
         clipData: const FlClipData.all(),
-        lineBarsData: [
-          LineChartBarData(
-            spots: incomeSpots,
-            isCurved: true,
-            preventCurveOverShooting: true,
-            color: AppColors.green,
-            barWidth: 2,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.green.withValues(alpha: 0.15),
-                  AppColors.green.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-          ),
-          LineChartBarData(
-            spots: expenseSpots,
-            isCurved: true,
-            preventCurveOverShooting: true,
-            color: AppColors.danger,
-            barWidth: 2,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.danger.withValues(alpha: 0.06),
-                  AppColors.danger.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-          ),
-        ],
+        lineBarsData: bars,
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
@@ -992,7 +1069,9 @@ class _LineChart extends StatelessWidget {
           touchTooltipData: LineTouchTooltipData(
             getTooltipColor: (_) => inkColor,
             getTooltipItems: (spots) => spots.map((s) {
-              final isIncome = s.barIndex == 0;
+              final isIncome = s.barIndex >= 0 && s.barIndex < barIsIncome.length
+                  ? barIsIncome[s.barIndex]
+                  : true;
               final amount = (s.y * 100).round();
               return LineTooltipItem(
                 '${isIncome ? '↑' : '↓'} ${formatMoney(amount, currency)}',

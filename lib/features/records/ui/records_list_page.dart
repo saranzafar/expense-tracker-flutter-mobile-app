@@ -9,6 +9,7 @@ import '../../../core/theme.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/settings_repo.dart';
+import '../../shared/totals_strip.dart';
 import '../widgets/record_tile.dart';
 import 'add_record_sheet.dart';
 
@@ -144,7 +145,19 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
       ),
       body: SafeArea(
         bottom: false,
-        child: XSwitcher(
+        child: RefreshIndicator(
+          color: AppColors.green,
+          onRefresh: () async {
+            ref.invalidate(filteredRecordsProvider);
+            ref.invalidate(filteredTotalsProvider);
+            await ref.read(filteredRecordsProvider(RecordsQuery(
+              type: _filter,
+              range: _range,
+              categoryId: _selectedCategoryId,
+              limit: _limit,
+            )).future);
+          },
+          child: XSwitcher(
           child: records.when(
             skipLoadingOnReload: true,
             loading: () => const Center(
@@ -157,27 +170,31 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
               _lastCount = items.length;
 
               if (items.isEmpty) {
-                return Center(
+                return ListView(
                   key: const ValueKey('rec-empty'),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.receipt_long_outlined,
-                          size: 48, color: context.inkSubtle),
-                      const SizedBox(height: 12),
-                      Text('No records found',
-                          style:
-                              AppTextStyles.title.copyWith(color: context.ink)),
-                      const SizedBox(height: 4),
-                      Text(
-                        _hasActiveFilters
-                            ? 'Try adjusting your filters'
-                            : 'Tap + to add your first record',
-                        style: AppTextStyles.caption
-                            .copyWith(color: context.inkMuted),
-                      ),
-                    ],
-                  ),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    const SizedBox(height: 160),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.receipt_long_outlined,
+                            size: 48, color: context.inkSubtle),
+                        const SizedBox(height: 12),
+                        Text('No records found',
+                            style: AppTextStyles.title
+                                .copyWith(color: context.ink)),
+                        const SizedBox(height: 4),
+                        Text(
+                          _hasActiveFilters
+                              ? 'Try adjusting your filters'
+                              : 'Tap + to add your first record',
+                          style: AppTextStyles.caption
+                              .copyWith(color: context.inkMuted),
+                        ),
+                      ],
+                    ),
+                  ],
                 );
               }
 
@@ -187,6 +204,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
               return ListView.builder(
                 key: const ValueKey('rec-list'),
                 controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: 120),
                 itemCount: groups.length + 2,
                 itemBuilder: (_, i) {
@@ -195,7 +213,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
                     return totals.maybeWhen(
                       data: (t) => t.incomeMinor == 0 && t.expenseMinor == 0
                           ? const SizedBox.shrink()
-                          : _TotalsStrip(totals: t, currency: currency),
+                          : _recordsBoard(t, currency),
                       orElse: () => const SizedBox.shrink(),
                     );
                   }
@@ -289,6 +307,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage>
                 },
               );
             },
+          ),
           ),
         ),
       ),
@@ -808,100 +827,24 @@ class _DateTile extends StatelessWidget {
 
 // ── Totals strip ──────────────────────────────────────────────────────────────
 
-class _TotalsStrip extends StatelessWidget {
-  const _TotalsStrip({required this.totals, required this.currency});
-  final RecordsTotals totals;
-  final CurrencyOption currency;
-
-  @override
-  Widget build(BuildContext context) {
-    final net = totals.netMinor;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: context.cardSurface,
-          border: Border.all(color: context.hairline),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            _StatItem(
-              icon: Icons.arrow_downward_rounded,
-              color: AppColors.green,
-              label: 'Income',
-              value: formatMoney(totals.incomeMinor, currency),
-            ),
-            Container(
-              width: 1,
-              height: 32,
-              color: context.hairline,
-              margin: const EdgeInsets.symmetric(horizontal: 14),
-            ),
-            _StatItem(
-              icon: Icons.arrow_upward_rounded,
-              color: AppColors.danger,
-              label: 'Expense',
-              value: formatMoney(totals.expenseMinor, currency),
-            ),
-            const Spacer(),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('Net',
-                    style: AppTextStyles.caption
-                        .copyWith(color: context.inkSubtle, fontSize: 11)),
-                const SizedBox(height: 2),
-                Text(
-                  '${net >= 0 ? '+' : '−'} ${formatMoney(net.abs(), currency)}',
-                  style: AppTextStyles.caption.copyWith(
-                    color: net >= 0 ? AppColors.green : AppColors.danger,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  const _StatItem({
-    required this.icon,
-    required this.color,
-    required this.label,
-    required this.value,
-  });
-  final IconData icon;
-  final Color color;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 10, color: color),
-            const SizedBox(width: 3),
-            Text(label,
-                style: AppTextStyles.caption.copyWith(
-                    color: context.inkSubtle, fontSize: 11)),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(value,
-            style: AppTextStyles.caption.copyWith(
-                color: color, fontWeight: FontWeight.w700, fontSize: 13)),
-      ],
-    );
-  }
+Widget _recordsBoard(RecordsTotals totals, CurrencyOption currency) {
+  final net = totals.netMinor;
+  return SummaryBoard(
+    left: BoardStat(
+      icon: Icons.arrow_downward_rounded,
+      color: AppColors.green,
+      label: 'Income',
+      value: formatMoney(totals.incomeMinor, currency),
+    ),
+    middle: BoardStat(
+      icon: Icons.arrow_upward_rounded,
+      color: AppColors.danger,
+      label: 'Expense',
+      value: formatMoney(totals.expenseMinor, currency),
+    ),
+    rightLabel: 'Net',
+    rightValue:
+        '${net >= 0 ? '+' : '−'} ${formatMoney(net.abs(), currency)}',
+    rightColor: net >= 0 ? AppColors.green : AppColors.danger,
+  );
 }
